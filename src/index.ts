@@ -1,12 +1,10 @@
-
-import {Arguments} from './arguments';
+import { Arguments } from './arguments';
 
 class Lib {
-  inputFile : string;
+  inputFile: string;
 
-  constructor(args:Arguments) {
+  constructor(args: Arguments) {
     this.inputFile = args.file;
-
   }
   run() {
     console.log(`Looking good! Passed ${this.inputFile}`);
@@ -14,4 +12,3 @@ class Lib {
 }
 
 export default Lib;
-

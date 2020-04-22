@@ -5,7 +5,7 @@ import Lib from '../src';
 describe('API', () => {
   it('Should expose its API', () => {
     const lib = new Lib({
-      file: ''
+      file: '',
     });
     assert(lib);
   });
