@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import yargs from 'yargs';
+import yargs = require('yargs');
+
 import { definition } from './arguments';
 import Lib from './';
 
