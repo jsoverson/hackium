@@ -1,0 +1,44 @@
+{
+"update_url": "https://clients2.google.com/service/update2/crx",
+
+  "manifest_version": 2,
+  "version": "2",
+  "name": "Hackium Theme",
+  "description": "Hackium theme",
+
+  "theme": {
+    "colors": {
+      "frame": [ 21,11,11 ],
+      "toolbar": [ 61,31,31],
+      "toolbar_button_icon":[0,0,0],
+
+      "omnibox_text":[0,0,0],
+      "omnibox_background": [200,200,200],
+
+      "ntp_background": [ 21,11,11 ],
+      "ntp_text": [193,153,153],
+
+      "tab_text": [255,255,255],
+      "bookmark_text": [255,255,255],
+
+      "background_tab": [21,11,11],
+      "background_tab_inactive": [0,0,255],
+      "button_background": [0,255,0],
+
+      "tab_background_text": [255,255,255],
+      "tab_background_text_inactive": [ 255,255,255],
+      "tab_background_text_incognito": [ 255,255,255 ],
+      "tab_background_text_incognito_inactive": [ 255,255,255]
+       },      
+
+    "tints" : {
+      "buttons": [ 0, 1, 0.8 ],
+      "frame_inactive": [ -1, -1, -1],
+
+
+      "frame_incognito": [ 0.1, 0, 0.3],
+      "frame_incognito_inactive": [ 0.1, 0, 0.3]
+     }
+  }
+}
+

@@ -1,36 +1,46 @@
 {
-  "name": "cli-boilerplate",
+  "name": "hackium",
   "version": "1.0.0",
   "description": "TODO",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "compile": "tsc --declaration",
-    "prepublish": "npm run compile",
+    "compile": "npm run clean && tsc --declaration",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run compile",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
+    "watch": "tsc -w",
     "test": "mocha"
   },
   "bin": {
-    "cli-name": "./dist/src/cli.js"
+    "hackium": "./dist/cli.js"
   },
   "directories": {
-    "lib": "./dist",
-    "src": "./src",
-    "test": "./test"
+    "dist": "./dist",
+    "src": "./src"
   },
   "keywords": [],
   "author": "Jarrod Overson <jsoverson@gmail.com>",
   "license": "ISC",
   "dependencies": {
+    "chalk": "^4.0.0",
+    "debug": "^4.1.1",
+    "puppeteer": "^3.0.1",
+    "puppeteer-extra": "^3.1.9",
+    "puppeteer-extra-plugin-adblocker": "^2.11.3",
+    "puppeteer-extra-plugin-interceptor": "^0.2.0",
     "yargs": "^15.3.1"
   },
   "devDependencies": {
+    "@types/debug": "^4.1.5",
     "@types/mocha": "^7.0.2",
     "@types/node": "^13.13.2",
+    "@types/serve-handler": "^6.1.0",
     "@types/yargs": "^15.0.4",
     "mocha": "^7.1.1",
     "prettier": "^2.0.5",
+    "serve-handler": "^6.1.2",
     "ts-node": "^8.9.0",
     "typescript": "^3.8.3"
   }
