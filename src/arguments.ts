@@ -1,4 +1,3 @@
-
 export interface Arguments {
   url: string;
   adblock: boolean;
@@ -14,12 +13,12 @@ export interface Arguments {
 export const definition = {
   headless: {
     describe: 'start hackium in headless mode',
-    boolean:true,
-    default: false
+    boolean: true,
+    default: false,
   },
   pwd: {
     describe: 'root directory to look for support modules',
-    default: process.cwd()
+    default: process.cwd(),
   },
   adblock: {
     describe: 'turn on ad blocker',
@@ -35,13 +34,13 @@ export const definition = {
   env: {
     array: true,
     describe: 'environment variable name/value pairs (e.g. --env MYVAR=value)',
-    default: [] as string[]
+    default: [] as string[],
   },
   inject: {
     alias: 'e',
     array: true,
     describe: 'script file to inject first on every page',
-    default: [] as string[]
+    default: [] as string[],
   },
   intercept: {
     alias: 'i',
@@ -54,5 +53,5 @@ export const definition = {
     string: true,
     describe: 'interceptor module that will handle intercepted responses',
     default: '',
-  }
+  },
 };

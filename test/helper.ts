@@ -1,7 +1,6 @@
-
 import yargs from 'yargs';
 
-import {definition, Arguments} from '../src/arguments';
+import { definition, Arguments } from '../src/arguments';
 
 export function getArgs(argv: string): Arguments {
   const y = yargs.options(definition);

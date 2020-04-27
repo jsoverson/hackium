@@ -11,10 +11,7 @@ import Logger from './logger';
 
 const log = new Logger('hackium:cli');
 
-const DEFAULT_CONFIG_NAMES = [
-  'hackium.json',
-  'hackium.config.js',
-];
+const DEFAULT_CONFIG_NAMES = ['hackium.json', 'hackium.config.js'];
 
 const argParser = yargs
   .options(definition)
@@ -30,10 +27,10 @@ const args = argParser.argv;
 main(args);
 
 async function main(config: Arguments) {
-  const configFilesToCheck = [...DEFAULT_CONFIG_NAMES]
+  const configFilesToCheck = [...DEFAULT_CONFIG_NAMES];
 
   if (config.config) configFilesToCheck.unshift(config.config);
-  
+
   for (let i = 0; i < configFilesToCheck.length; i++) {
     const fileName = configFilesToCheck[i];
     const location = path.join(process.env.PWD || '', fileName);
@@ -50,18 +47,19 @@ async function main(config: Arguments) {
 
   const instance = new Hackium(config);
 
-  instance.cliBehavior().then(() => {
-    log.info('Hackium launched');
+  instance
+    .cliBehavior()
+    .then(() => {
+      log.info('Hackium launched');
 
-    const replInstance = repl.start('> ');
-    replInstance.context.hackium = instance;
-    replInstance.context.cdp = instance.connection;
-    replInstance.on('exit', () => {
-      log.info('REPL exited. Press ^C to quit Hackium');
+      const replInstance = repl.start('> ');
+      replInstance.context.hackium = instance;
+      replInstance.context.cdp = instance.connection;
+      replInstance.on('exit', () => {
+        log.info('REPL exited. Press ^C to quit Hackium');
+      });
     })
-
-  }).catch(err => {
-    log.error(err);
-  });
+    .catch((err) => {
+      log.error(err);
+    });
 }
-

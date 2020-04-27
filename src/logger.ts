@@ -2,21 +2,21 @@ import DEBUG from 'debug';
 import chalk from 'chalk';
 
 export default class Logger {
-  debug:(...args:any)=>void;
+  debug: (...args: any) => void;
 
-  constructor(name:string) {
+  constructor(name: string) {
     this.debug = DEBUG(name);
   }
-  print(...args:any) {
+  print(...args: any) {
     console.log(...args);
   }
-  info(...args:any) {
+  info(...args: any) {
     console.log(chalk.cyan('Info: '), ...args);
   }
-  warn(...args:any) {
+  warn(...args: any) {
     console.warn(chalk.yellow('Warning: '), ...args);
   }
-  error(...args:any) {
+  error(...args: any) {
     console.error(chalk.red('Error: '), ...args);
   }
 }
