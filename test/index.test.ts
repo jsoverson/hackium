@@ -10,12 +10,16 @@ const port = 5000;
 let baseUrl = `http://127.0.0.1:${port}/`;
 let baseArgs = `--url="${baseUrl}" --pwd="${__dirname}" --headless`;
 
-describe('CLI', () => {
+describe('CLI', function() {
+  this.timeout(3500);
+  
   before((done) => {
+    console.log('starting server');
     start(port, done);
   });
 
   after((done) => {
+    console.log('stopping server');
     stop(done);
   });
 

@@ -155,8 +155,8 @@ class Hackium extends Logger {
       '[screen.availWidth, screen.availHeight];',
     )) as [number, number];
 
-    // @ts-ignore
     const window = (await this.connection.send('Browser.getWindowForTarget', {
+      // @ts-ignore
       targetId: page._targetId,
     })) as { windowId: number };
     await this.connection.send('Browser.setWindowBounds', {
