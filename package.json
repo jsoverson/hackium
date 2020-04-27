@@ -30,6 +30,7 @@
     "puppeteer-extra": "^3.1.9",
     "puppeteer-extra-plugin-adblocker": "^2.11.3",
     "puppeteer-extra-plugin-interceptor": "^0.2.0",
+    "puppeteer-interceptor": "^0.2.0",
     "yargs": "^15.3.1"
   },
   "devDependencies": {
