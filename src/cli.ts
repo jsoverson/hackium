@@ -56,7 +56,10 @@ async function main(config: Arguments) {
       replInstance.context.hackium = instance;
       replInstance.context.cdp = instance.connection;
       replInstance.on('exit', () => {
-        log.info('REPL exited. Press ^C to quit Hackium');
+        instance.browser.close();
+      });
+      instance.browser.on('disconnected', () => {
+        replInstance.close();
       });
     })
     .catch((err) => {
