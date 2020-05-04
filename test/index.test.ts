@@ -4,6 +4,8 @@ import path from 'path';
 
 import { start, stop } from './server';
 
+import { defaultArguments, Arguments } from '../src/arguments';
+
 import { getArgs } from './helper';
 
 import Hackium from '../src';
@@ -14,9 +16,9 @@ const port = 5000;
 let baseUrl = `http://127.0.0.1:${port}/`;
 let baseArgs = `--url="${baseUrl}" --pwd="${__dirname}" --headless`;
 
-describe('CLI', function() {
+describe('CLI', function () {
   this.timeout(6000);
-  
+
   before((done) => {
     console.log('starting server');
     start(port, _ => {
@@ -71,7 +73,31 @@ describe('CLI', function() {
     await instance.cliBehavior();
     const stat = await fsp.stat(dir);
     assert(stat.isDirectory());
-    await fsp.rmdir(dir, {recursive:true});
+    await fsp.rmdir(dir, { recursive: true });
+    return instance.close();
+  });
+
+  it('Should read local config', async () => {
+    const instance = new Hackium({
+      pwd: __dirname,
+      headless: true,
+      url: `${baseUrl}/anything`,
+    } as Arguments);
+    await instance.cliBehavior();
+    const [page] = await instance.browser.pages();
+    const url = page.url();
+    assert.equal(url, `${baseUrl}/anything`);
+    return instance.close();
+  });
+
+  it('Should merge defaults with passed config', async () => {
+    const instance = new Hackium({
+      headless: true,
+    } as Arguments);
+    await instance.cliBehavior();
+    const [page] = await instance.browser.pages();
+    const url = page.url();
+    assert.equal(url, defaultArguments.url);
     return instance.close();
   });
 
@@ -80,7 +106,7 @@ describe('CLI', function() {
     const tempPath = path.join(__dirname, 'fixtures', 'interceptorTemp.js');
     const origSrc = await fsp.readFile(origPath, 'utf8');
 
-    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue','interceptedValTemp'), 'utf8');
+    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValTemp'), 'utf8');
     const instance = new Hackium(
       getArgs(`${baseArgs} --i "*.js" --I fixtures/interceptorTemp.js -w`),
     );
@@ -91,7 +117,7 @@ describe('CLI', function() {
     let value = await page.evaluate('window.interceptedVal');
     assert.equal(value, 'interceptedValTemp');
 
-    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue','interceptedValHotload'), 'utf8');
+    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValHotload'), 'utf8');
     await page.reload();
 
     value = await page.evaluate('window.interceptedVal');

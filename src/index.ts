@@ -59,7 +59,9 @@ class Hackium extends Logger {
   constructor(config?: Arguments) {
     super('hackium');
     this.debug('contructing Hackium instance');
-    if (config) this.config = config;
+    if (config) this.config = Object.assign({}, this.config, config);
+    this.debug('Using config:');
+    this.debug(this.config);
 
     this.browser = new NullBrowser();
     this.connection = new NullCDPSession();

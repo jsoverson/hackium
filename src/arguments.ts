@@ -2,7 +2,7 @@ import path from 'path';
 
 
 export class Arguments {
-  url: string = 'https://example.com';
+  url: string = 'https://example.com/';
   adblock: boolean = false;
   env: string[] = [];
   config?: string = '';
