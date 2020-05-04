@@ -54,7 +54,7 @@ async function main(config: Arguments) {
 
       const replInstance = repl.start('> ');
       replInstance.context.hackium = instance;
-      replInstance.context.cdp = instance.connection;
+      replInstance.context.cdp = instance.getConnection();
       replInstance.on('exit', () => {
         instance.browser.close();
       });

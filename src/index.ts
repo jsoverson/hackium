@@ -5,10 +5,11 @@ import { Browser, CDPSession, LaunchOptions, Page } from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
 import AdblockerPlugin from 'puppeteer-extra-plugin-adblocker';
 import { interceptor, patterns, Interceptor } from 'puppeteer-extra-plugin-interceptor';
-import { Arguments } from './arguments';
+import { Arguments, defaultArguments } from './arguments';
 import { NullBrowser } from './nullbrowser';
 import { NullCDPSession } from './nullcdpsession';
 import Logger from './logger';
+import importFresh from 'import-fresh';
 
 export { patterns } from 'puppeteer-interceptor';
 
@@ -27,33 +28,31 @@ function setEnv(env: string[] = []) {
 
 type Fn = (...args: any[]) => any;
 
+type InterceptorSignature = (
+  hackium: Hackium,
+  evt: Interceptor.OnResponseReceivedEvent,
+  debug: Fn,
+) => any
+
 class Hackium extends Logger {
-  config: Arguments = {
-    url: 'https://example.com',
-    adblock: false,
-    env: [],
-    pwd: process.cwd(),
-    headless: false,
-  };
-
-  interceptor?: (
-    hackium: Hackium,
-    evt: Interceptor.OnResponseReceivedEvent,
-    debug: Fn,
-  ) => any;
   browser: Browser;
-  connection: CDPSession;
 
-  launchOptions: LaunchOptions = {
-    headless: false,
+  private config: Arguments = defaultArguments;
+
+  private interceptors: InterceptorSignature[]= [];
+  private interceptorModules: string[] = [];
+  private connection: CDPSession;
+  private cachedInjections: string[] = [];
+
+  private defaultChromiumArgs: string[] = [
+    '--disable-infobars',
+    '--no-default-browser-check',
+    `--load-extension=${path.join(__dirname, '..', 'theme')}`,
+  ];
+
+  private launchOptions: LaunchOptions = {
+    devtools:true,
     defaultViewport: null,
-    devtools: true,
-    args: [
-      '--disable-infobars',
-      '--no-default-browser-check',
-      `--load-extension=${path.join(__dirname, '..', 'theme')}`,
-      // `--user-data-dir=${path.join(__dirname, '..', '..' ,'userdata')}`
-    ],
     ignoreDefaultArgs: ['--enable-automation', '--disable-extensions'],
   };
 
@@ -69,7 +68,9 @@ class Hackium extends Logger {
     setEnv(ENVIRONMENT);
 
     this.launchOptions.headless = this.config.headless;
-
+    if (this.config.userDataDir) this.launchOptions.userDataDir = this.config.userDataDir;
+    this.launchOptions.args = this.defaultChromiumArgs;
+    
     if (this.config.adblock) {
       this.debug('using adblocker');
       puppeteer.use(
@@ -82,16 +83,75 @@ class Hackium extends Logger {
     if (this.config.interceptor) {
       this.debug('using interceptor');
       puppeteer.use(interceptor());
+      this.interceptorModules.push(this.config.interceptor);
+      this.loadInterceptors();
+    }
+  }
+
+  getConnection() {
+    return this.connection;
+  }
+  
+  loadInterceptors() {
+    this.interceptors = [];
+    this.interceptorModules.forEach(modulePath => {
       try {
         const interceptorPath = path.join(
           this.config.pwd,
-          this.config.interceptor,
+          modulePath,
         );
-        this.interceptor = require(interceptorPath);
+        this.interceptors.push(importFresh(interceptorPath) as InterceptorSignature);
       } catch (e) {
         this.warn(`Could not load interceptor: ${e.message}`);
       }
+    });
+  }
+
+  async reloadInjections() {
+    this.cachedInjections = [];
+    this.cacheInjections();
+  }
+
+  async cacheInjections(files = this.config.inject) {
+    this.debug(`reading files to inject on new document`);
+    if (!files) return [];
+    const readFiles = await Promise.allSettled(
+      files.map((f) => {
+        const location = path.join(this.config.pwd, f);
+        this.debug(`reading ${location}`);
+        return fs.readFile(location, 'utf-8').catch((e) => {
+          this.warn(`couldn't read ${location}: ${e.message}`);
+        });
+      }),
+    );
+    const injections = readFiles
+      .filter((p) => p.status === 'fulfilled')
+      .map((p) => (p as PromiseFulfilledResult<string>).value);
+    this.debug(`read ${injections.length} files`);
+    this.cachedInjections = injections;
+    return injections;
+  }
+
+  async instrumentPage(page: Page) {
+    if (!page) return;
+
+    for (let i = 0; i < this.cachedInjections.length; i++) {
+      await page.evaluateOnNewDocument(this.cachedInjections[i]);
     }
+    const interceptPatterns = this.config.intercept || [];
+    interceptPatterns.forEach((pattern) => {
+      page.intercept(patterns.Script(pattern), {
+        onResponseReceived: (evt: Interceptor.OnResponseReceivedEvent) => {
+          if (this.config.watch) this.loadInterceptors();
+          let response = evt.response;
+          this.interceptors.forEach(interceptor => {
+            if (response) evt.response = response;
+            response = interceptor(this, evt, DEBUG('hackium:interceptor'))
+          })
+          return response;
+        },
+      });
+    });
   }
 
   async launch() {
@@ -100,49 +160,15 @@ class Hackium extends Logger {
     const [page] = await browser.pages();
     this.connection = await page.target().createCDPSession();
 
-    let injections: string[] = [];
-
     if (this.config.inject) {
-      this.debug(`reading files to inject on new document`);
-      const readFiles = await Promise.allSettled(
-        this.config.inject.map((f) => {
-          const location = path.join(this.config.pwd, f);
-          this.debug(`reading ${location}`);
-          return fs.readFile(location, 'utf-8').catch((e) => {
-            this.warn(`couldn't read ${location}: ${e.message}`);
-          });
-        }),
-      );
-      injections = readFiles
-        .filter((p) => p.status === 'fulfilled')
-        .map((p) => (p as PromiseFulfilledResult<string>).value);
-      this.debug(`read ${injections.length} files`);
+      await this.cacheInjections();
     }
 
-    const instrumentPage = async (page: Page) => {
-      if (!page) return;
-
-      for (let i = 0; i < injections.length; i++) {
-        await page.evaluateOnNewDocument(injections[i]);
-      }
-      const interceptPatterns = this.config.intercept || [];
-      interceptPatterns.forEach((pattern) => {
-        page.intercept(patterns.Script(pattern), {
-          onResponseReceived: (evt: Interceptor.OnResponseReceivedEvent) => {
-            return (
-              this.interceptor &&
-              this.interceptor(this, evt, DEBUG('hackium:interceptor'))
-            );
-          },
-        });
-      });
-    };
-
     browser.on('targetcreated', async (target) => {
-      instrumentPage(await target.page());
+      this.instrumentPage(await target.page());
     });
 
-    instrumentPage(page);
+    this.instrumentPage(page);
 
     return (this.browser = browser);
   }
@@ -165,7 +191,7 @@ class Hackium extends Logger {
   }
 
   async setWindowBounds() {
-    await this.maximize();
+    // await this.maximize();
   }
 
   async getActivePage(): Promise<Page | null> {
