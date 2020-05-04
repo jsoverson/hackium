@@ -1,5 +1,5 @@
 import assert from 'assert';
-import {promises as fs} from 'fs';
+import fs from 'fs';
 import path from 'path';
 
 import { start, stop } from './server';
@@ -7,6 +7,8 @@ import { start, stop } from './server';
 import { getArgs } from './helper';
 
 import Hackium from '../src';
+
+const fsp = fs.promises;
 
 const port = 5000;
 let baseUrl = `http://127.0.0.1:${port}/`;
@@ -57,15 +59,28 @@ describe('CLI', function() {
     await instance.cliBehavior();
     const [page] = await instance.browser.pages();
     const value = await page.evaluate('window.interceptedVal');
-    assert.equal(value, 'interceptedVal');
+    assert.equal(value, 'interceptedValue');
+    return instance.close();
+  });
+
+  it('Should create userDataDir', async () => {
+    const dir = '/tmp/randomDir' + Math.random();
+    const instance = new Hackium(
+      getArgs(`${baseArgs} --userDataDir=${dir}`),
+    );
+    await instance.cliBehavior();
+    const stat = await fsp.stat(dir);
+    assert(stat.isDirectory());
+    await fsp.rmdir(dir, {recursive:true});
     return instance.close();
   });
 
   it('Should watch for changes', async () => {
+    const origPath = path.join(__dirname, 'fixtures', 'interceptor.js');
     const tempPath = path.join(__dirname, 'fixtures', 'interceptorTemp.js');
-    const tempSrc = await fs.readFile(tempPath, 'utf8');
-    
-    await fs.writeFile(tempPath, tempSrc, 'utf8');
+    const origSrc = await fsp.readFile(origPath, 'utf8');
+
+    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue','interceptedValTemp'), 'utf8');
     const instance = new Hackium(
       getArgs(`${baseArgs} --i "*.js" --I fixtures/interceptorTemp.js -w`),
     );
@@ -76,13 +91,13 @@ describe('CLI', function() {
     let value = await page.evaluate('window.interceptedVal');
     assert.equal(value, 'interceptedValTemp');
 
-    await fs.writeFile(tempPath, tempSrc.replace('interceptedValTemp','interceptedValHotload'), 'utf8');
+    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue','interceptedValHotload'), 'utf8');
     await page.reload();
 
     value = await page.evaluate('window.interceptedVal');
     assert.equal(value, 'interceptedValHotload');
 
-    await fs.unlink(tempPath);
+    await fsp.unlink(tempPath);
     return instance.close();
   });
 });
