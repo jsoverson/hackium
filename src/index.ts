@@ -5,9 +5,8 @@ import { Browser, CDPSession, LaunchOptions, Page } from 'puppeteer';
 import puppeteer from 'puppeteer-extra';
 import AdblockerPlugin from 'puppeteer-extra-plugin-adblocker';
 import { interceptor, patterns, Interceptor } from 'puppeteer-extra-plugin-interceptor';
+import { extensionBridge } from 'puppeteer-extra-plugin-extensionbridge';
 import { Arguments, defaultArguments } from './arguments';
-import { NullBrowser } from './nullbrowser';
-import { NullCDPSession } from './nullcdpsession';
 import Logger from './logger';
 import importFresh from 'import-fresh';
 
@@ -35,13 +34,13 @@ type InterceptorSignature = (
 ) => any
 
 class Hackium extends Logger {
-  browser: Browser;
+  browser?: Browser;
 
+  private connection?: CDPSession;
   private config: Arguments = defaultArguments;
 
-  private interceptors: InterceptorSignature[]= [];
+  private interceptors: InterceptorSignature[] = [];
   private interceptorModules: string[] = [];
-  private connection: CDPSession;
   private cachedInjections: string[] = [];
 
   private defaultChromiumArgs: string[] = [
@@ -51,7 +50,7 @@ class Hackium extends Logger {
   ];
 
   private launchOptions: LaunchOptions = {
-    devtools:true,
+    devtools: true,
     defaultViewport: null,
     ignoreDefaultArgs: ['--enable-automation', '--disable-extensions'],
   };
@@ -63,16 +62,13 @@ class Hackium extends Logger {
     this.debug('Using config:');
     this.debug(this.config);
 
-    this.browser = new NullBrowser();
-    this.connection = new NullCDPSession();
-
     setEnv(this.config.env);
     setEnv(ENVIRONMENT);
 
     this.launchOptions.headless = this.config.headless;
     if (this.config.userDataDir) this.launchOptions.userDataDir = this.config.userDataDir;
     this.launchOptions.args = this.defaultChromiumArgs;
-    
+
     if (this.config.adblock) {
       this.debug('using adblocker');
       puppeteer.use(
@@ -88,12 +84,20 @@ class Hackium extends Logger {
       this.interceptorModules.push(this.config.interceptor);
       this.loadInterceptors();
     }
+
+    puppeteer.use(extensionBridge());
   }
 
   getConnection() {
+    if (!this.connection) throw new Error('Attempt to capture CDP connection before initialized');
     return this.connection;
   }
-  
+
+  getBrowser() {
+    if (!this.browser) throw new Error('Attempt to capture browser before initialized');
+    return this.browser;
+  }
+
   loadInterceptors() {
     this.interceptors = [];
     this.interceptorModules.forEach(modulePath => {
@@ -175,18 +179,35 @@ class Hackium extends Logger {
     return (this.browser = browser);
   }
 
+  async setProxy(host: string, port: number) {
+    var config = {
+      mode: "fixed_servers",
+      rules: {
+        singleProxy: {
+          scheme: "http",
+          host: host,
+          port: port
+        },
+        bypassList: []
+      }
+    };
+    const msg = { value: config, scope: 'regular' };
+
+    return this.getBrowser().extension.send(`chrome.proxy.settings.set`, msg);
+  }
+
   async maximize() {
     // hacky way of maximizing. --start-maximized and windowState:maximized don't work on macs. Check later.
-    const [page] = await this.browser.pages();
+    const [page] = await this.getBrowser().pages();
     const [width, height] = (await page.evaluate(
       '[screen.availWidth, screen.availHeight];',
     )) as [number, number];
 
-    const window = (await this.connection.send('Browser.getWindowForTarget', {
+    const window = (await this.getConnection().send('Browser.getWindowForTarget', {
       // @ts-ignore
       targetId: page._targetId,
     })) as { windowId: number };
-    await this.connection.send('Browser.setWindowBounds', {
+    await this.getConnection().send('Browser.setWindowBounds', {
       windowId: window.windowId,
       bounds: { top: 0, left: 0, width, height },
     });
@@ -197,7 +218,7 @@ class Hackium extends Logger {
   }
 
   async getActivePage(): Promise<Page | null> {
-    const visibilityChecks = (await this.browser.pages()).map((p) =>
+    const visibilityChecks = (await this.getBrowser().pages()).map((p) =>
       p.evaluate(`document.visibilityState]`).then((res) => [p, res]),
     );
     const results = await Promise.allSettled(visibilityChecks);
@@ -216,10 +237,11 @@ class Hackium extends Logger {
     const [page] = await browser.pages();
     this.debug(`navigating to ${this.config.url}`);
     await page.goto(this.config.url);
+    await this.setProxy("127.0.0.1", 5080);
   }
 
   async close() {
-    return this.browser.close();
+    return this.getBrowser().close();
   }
 }
 

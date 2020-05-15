@@ -45,20 +45,22 @@ async function main(config: Arguments) {
     }
   }
 
-  const instance = new Hackium(config);
+  const hackium = new Hackium(config);
 
-  instance
+  hackium
     .cliBehavior()
     .then(() => {
       log.info('Hackium launched');
 
       const replInstance = repl.start('> ');
-      replInstance.context.hackium = instance;
-      replInstance.context.cdp = instance.getConnection();
+      replInstance.context.hackium = hackium;
+      replInstance.context.browser = hackium.getBrowser();
+      replInstance.context.cdp = hackium.getConnection();
+      replInstance.context.setProxy = hackium.setProxy.bind(hackium);
       replInstance.on('exit', () => {
-        instance.browser.close();
+        hackium.getBrowser().close();
       });
-      instance.browser.on('disconnected', () => {
+      hackium.getBrowser().on('disconnected', () => {
         replInstance.close();
       });
     })
