@@ -46,6 +46,7 @@ async function main(config: Arguments) {
   }
 
   const hackium = new Hackium(config);
+  const browser = hackium.getBrowser();
 
   hackium
     .cliBehavior()
@@ -54,11 +55,11 @@ async function main(config: Arguments) {
 
       const replInstance = repl.start('> ');
       replInstance.context.hackium = hackium;
-      replInstance.context.browser = hackium.getBrowser();
-      replInstance.context.cdp = hackium.getConnection();
-      replInstance.context.setProxy = hackium.setProxy.bind(hackium);
+      replInstance.context.browser = browser;
+      replInstance.context.cdp = browser.connection;
+      replInstance.context.setProxy = browser.setProxy.bind(browser);
       replInstance.on('exit', () => {
-        hackium.getBrowser().close();
+        browser.close();
       });
       hackium.getBrowser().on('disconnected', () => {
         replInstance.close();

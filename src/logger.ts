@@ -1,8 +1,8 @@
-import DEBUG from 'debug';
+import DEBUG, { Debugger } from 'debug';
 import chalk from 'chalk';
 
 export default class Logger {
-  debug: (...args: any) => void;
+  debug: Debugger;
 
   constructor(name: string) {
     this.debug = DEBUG(name);

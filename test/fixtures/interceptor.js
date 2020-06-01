@@ -1,5 +1,7 @@
-module.exports = function(hackium, interception) {
+module.exports = function (hackium, interception) {
   const response = interception.response;
   response.body += `;window.interceptedVal = 'interceptedValue';`
   return response;
 }
+
+console.log('importing');

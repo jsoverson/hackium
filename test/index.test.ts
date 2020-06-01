@@ -14,12 +14,16 @@ const fsp = fs.promises;
 
 const port = 5000;
 let baseUrl = `http://127.0.0.1:${port}/`;
-let baseArgs = `--url="${baseUrl}" --pwd="${__dirname}" --headless`;
 
 describe('CLI', function () {
   this.timeout(6000);
+  let dir = '/nonexistant';
+  let baseArgs = '';
 
   before((done) => {
+    dir = '/tmp/randomDir' + Math.random();
+    baseArgs = `--url="${baseUrl}" --pwd="${__dirname}" --userDataDir=${dir}`
+
     console.log('starting server');
     start(port, _ => {
       console.log('started server');
@@ -29,26 +33,29 @@ describe('CLI', function () {
 
   after((done) => {
     console.log('stopping server');
-    stop(_ => {
-      console.log('stopped server');
-      done();
+    fsp.rmdir(dir, { recursive: true }).then(() => {
+      stop(_ => {
+        console.log('stopped server');
+        done();
+      });
     });
   });
 
   it('Should go to a default URL', async () => {
     const instance = new Hackium(getArgs(`${baseArgs}`));
-    await instance.cliBehavior();
-    const [page] = await instance.browser.pages();
+    const browser = await instance.cliBehavior();
+    const [page] = await browser.pages();
     const title = await page.title();
     assert.equal(title, 'Test page');
     return instance.close();
   });
+
   it('Should inject evaluateOnNewDocument scripts', async () => {
     const instance = new Hackium(
       getArgs(`${baseArgs} --inject fixtures/global-var.js`),
     );
-    await instance.cliBehavior();
-    const [page] = await instance.browser.pages();
+    const browser = await instance.cliBehavior();
+    const [page] = await browser.pages();
     const globalValue = await page.evaluate('window.globalVar');
     assert.equal(globalValue, 'globalVar');
     return instance.close();
@@ -58,33 +65,31 @@ describe('CLI', function () {
     const instance = new Hackium(
       getArgs(`${baseArgs} --i "*.js" --I fixtures/interceptor.js`),
     );
-    await instance.cliBehavior();
-    const [page] = await instance.browser.pages();
+    const browser = await instance.cliBehavior();
+    const [page] = await browser.pages();
     const value = await page.evaluate('window.interceptedVal');
     assert.equal(value, 'interceptedValue');
     return instance.close();
   });
 
   it('Should create userDataDir', async () => {
-    const dir = '/tmp/randomDir' + Math.random();
     const instance = new Hackium(
-      getArgs(`${baseArgs} --userDataDir=${dir}`),
+      getArgs(`${baseArgs}`),
     );
     await instance.cliBehavior();
     const stat = await fsp.stat(dir);
     assert(stat.isDirectory());
-    await fsp.rmdir(dir, { recursive: true });
     return instance.close();
   });
 
   it('Should read local config', async () => {
     const instance = new Hackium({
       pwd: __dirname,
-      headless: true,
+      // headless: true,
       url: `${baseUrl}/anything`,
     } as Arguments);
-    await instance.cliBehavior();
-    const [page] = await instance.browser.pages();
+    const browser = await instance.cliBehavior();
+    const [page] = await browser.pages();
     const url = page.url();
     assert.equal(url, `${baseUrl}/anything`);
     return instance.close();
@@ -92,10 +97,11 @@ describe('CLI', function () {
 
   it('Should merge defaults with passed config', async () => {
     const instance = new Hackium({
-      headless: true,
+      headless: false,
+      userDataDir: dir
     } as Arguments);
-    await instance.cliBehavior();
-    const [page] = await instance.browser.pages();
+    const browser = await instance.cliBehavior();
+    const [page] = await browser.pages();
     const url = page.url();
     assert.equal(url, defaultArguments.url);
     return instance.close();
@@ -110,15 +116,18 @@ describe('CLI', function () {
     const instance = new Hackium(
       getArgs(`${baseArgs} --i "*.js" --I fixtures/interceptorTemp.js -w`),
     );
-    await instance.cliBehavior();
-    const [page] = await instance.browser.pages();
+    const browser = await instance.cliBehavior();
+    let [page] = await browser.pages();
+
     page.setCacheEnabled(false);
 
     let value = await page.evaluate('window.interceptedVal');
     assert.equal(value, 'interceptedValTemp');
 
     await fsp.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValHotload'), 'utf8');
-    await page.reload();
+    await page.close();
+    page = await instance.getBrowser().newPage();
+    await page.goto(baseUrl);
 
     value = await page.evaluate('window.interceptedVal');
     assert.equal(value, 'interceptedValHotload');
