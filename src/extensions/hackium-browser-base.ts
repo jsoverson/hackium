@@ -11,7 +11,7 @@ import { HackiumPlugin } from './hackium-plugin-base';
 
 declare module 'puppeteer' {
   export interface Browser {
-    connection: CDPSession
+    connection: CDPSession;
   }
 }
 
@@ -19,7 +19,7 @@ type InterceptorSignature = (
   hackium: HackiumBrowser,
   evt: Interceptor.OnResponseReceivedEvent,
   debug: Debugger,
-) => any
+) => any;
 
 // This should get less ugly once puppeteer is distributed typescript
 
@@ -41,8 +41,7 @@ export class HackiumBrowserBase extends HackiumPlugin {
     return 'hackium:plugin:browser-base';
   }
 
-  async beforeLaunch(options: LaunchOptions) {
-  }
+  async beforeLaunch(options: LaunchOptions) {}
 
   async afterLaunch(browser: Browser) {
     const [page] = await browser.pages();
@@ -81,10 +80,10 @@ export class HackiumBrowserBase extends HackiumPlugin {
         onResponseReceived: (evt: Interceptor.OnResponseReceivedEvent) => {
           if (this.config.watch) this.loadInterceptors();
           let response = evt.response;
-          this.interceptors.forEach(interceptor => {
+          this.interceptors.forEach((interceptor) => {
             if (response) evt.response = response;
-            response = interceptor(browser, evt, DEBUG('hackium:interceptor'))
-          })
+            response = interceptor(browser, evt, DEBUG('hackium:interceptor'));
+          });
           return response;
         },
       });
@@ -93,13 +92,12 @@ export class HackiumBrowserBase extends HackiumPlugin {
 
   loadInterceptors() {
     this.interceptors = [];
-    this.interceptorModules.forEach(modulePath => {
+    this.interceptorModules.forEach((modulePath) => {
       try {
-        const interceptorPath = path.join(
-          this.config.pwd,
-          modulePath,
+        const interceptorPath = path.join(this.config.pwd, modulePath);
+        this.interceptors.push(
+          importFresh(interceptorPath) as InterceptorSignature,
         );
-        this.interceptors.push(importFresh(interceptorPath) as InterceptorSignature);
       } catch (e) {
         this.log.warn(`Could not load interceptor: ${e.message}`);
       }

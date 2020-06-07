@@ -1,6 +1,5 @@
 import path from 'path';
 
-
 export class Arguments {
   url: string = 'https://example.com/';
   adblock: boolean = false;
@@ -11,9 +10,15 @@ export class Arguments {
   interceptor?: string = '';
   pwd: string = process.cwd();
   headless: boolean = false;
-  userDataDir: string = path.join(process.env.HOME || process.cwd(), '.hackium', 'chromium');
+  userDataDir: string = path.join(
+    process.env.HOME || process.cwd(),
+    '.hackium',
+    'chromium',
+  );
   devtools: boolean = true;
   watch: boolean = false;
+  execute: string[] = [];
+  _: any[] = [];
 }
 
 export const defaultArguments = new Arguments();
@@ -45,10 +50,16 @@ export const definition = {
     default: defaultArguments.env,
   },
   inject: {
-    alias: 'e',
+    alias: 'E',
     array: true,
     describe: 'script file to inject first on every page',
     default: defaultArguments.inject,
+  },
+  execute: {
+    alias: 'e',
+    array: true,
+    describe: 'hackium script to execute',
+    default: defaultArguments.execute,
   },
   intercept: {
     alias: 'i',
@@ -66,18 +77,18 @@ export const definition = {
     alias: 'U',
     describe: 'Chromium user data directory',
     string: true,
-    default: defaultArguments.userDataDir
+    default: defaultArguments.userDataDir,
   },
   devtools: {
     alias: 'd',
     describe: 'open devtools automatically on every tab',
     boolean: true,
-    default: defaultArguments.devtools
+    default: defaultArguments.devtools,
   },
   watch: {
     alias: 'w',
     describe: 'watch for configuration changes',
     boolean: true,
     default: defaultArguments.watch,
-  }
+  },
 };

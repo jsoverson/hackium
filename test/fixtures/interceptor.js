@@ -3,5 +3,3 @@ module.exports = function (hackium, interception) {
   response.body += `;window.interceptedVal = 'interceptedValue';`
   return response;
 }
-
-console.log('importing');

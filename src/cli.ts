@@ -46,18 +46,19 @@ async function main(config: Arguments) {
   }
 
   const hackium = new Hackium(config);
-  const browser = hackium.getBrowser();
 
   hackium
     .cliBehavior()
-    .then(() => {
+    .then(async () => {
       log.info('Hackium launched');
+      const browser = await hackium.getBrowser();
 
       const replInstance = repl.start('> ');
       replInstance.context.hackium = hackium;
       replInstance.context.browser = browser;
       replInstance.context.cdp = browser.connection;
       replInstance.context.setProxy = browser.setProxy.bind(browser);
+      replInstance.context.clearProxy = browser.clearProxy.bind(browser);
       replInstance.on('exit', () => {
         browser.close();
       });

@@ -1,15 +1,21 @@
 import path from 'path';
-import { LaunchOptions } from 'puppeteer';
-import puppeteer from 'puppeteer-extra';
+import vanillaPuppeteer, { LaunchOptions } from 'puppeteer';
+import { addExtra, VanillaPuppeteer, PuppeteerExtra } from 'puppeteer-extra';
 import AdblockerPlugin from 'puppeteer-extra-plugin-adblocker';
 import { extensionBridge } from 'puppeteer-extra-plugin-extensionbridge';
 import { interceptor } from 'puppeteer-extra-plugin-interceptor';
 import { Arguments, defaultArguments } from './arguments';
-import { browserBase, HackiumBrowserBase } from './extensions/hackium-browser-base';
+import {
+  browserBase,
+  HackiumBrowserBase,
+} from './extensions/hackium-browser-base';
 import { HackiumBrowser } from './hackium-browser';
 import Logger from './logger';
-
+import { promises as fsp } from 'fs';
+import vm from 'vm';
+import { waterfallMap } from './waterfallMap';
 export { patterns } from 'puppeteer-interceptor';
+import { createRequire } from 'module';
 
 const ENVIRONMENT = [
   'GOOGLE_API_KEY=no',
@@ -27,10 +33,10 @@ function setEnv(env: string[] = []) {
 class Hackium {
   browser?: HackiumBrowser;
   log = new Logger('hackium');
+  private puppeteer?: PuppeteerExtra;
 
   private config: Arguments = defaultArguments;
   private base: HackiumBrowserBase;
-
 
   private defaultChromiumArgs: string[] = [
     '--disable-infobars',
@@ -54,14 +60,17 @@ class Hackium {
     setEnv(ENVIRONMENT);
 
     this.launchOptions.headless = this.config.headless;
-    if (this.config.userDataDir) this.launchOptions.userDataDir = this.config.userDataDir;
+    if (this.config.userDataDir)
+      this.launchOptions.userDataDir = this.config.userDataDir;
     this.launchOptions.args = this.defaultChromiumArgs;
 
-    puppeteer.use(extensionBridge());
+    this.puppeteer = addExtra(vanillaPuppeteer);
+
+    this.puppeteer.use(extensionBridge());
 
     if (this.config.adblock) {
       this.log.debug('using adblocker');
-      puppeteer.use(
+      this.puppeteer.use(
         AdblockerPlugin({
           blockTrackers: true,
         }),
@@ -70,20 +79,24 @@ class Hackium {
 
     if (this.config.interceptor) {
       this.log.debug('using interceptor');
-      puppeteer.use(interceptor());
+      this.puppeteer.use(interceptor());
     }
 
-    puppeteer.use(this.base = browserBase(config));
-
+    this.puppeteer.use((this.base = browserBase(config)));
   }
 
   getBrowser(): HackiumBrowser {
-    if (!this.browser) throw new Error('Attempt to capture browser before initialized');
+    if (!this.browser)
+      throw new Error('Attempt to capture browser before initialized');
     return this.browser;
   }
 
-  async launch() {
-    const browser = await puppeteer.launch(this.launchOptions);
+  async launch(options: LaunchOptions = {}) {
+    if (!this.puppeteer)
+      throw new Error('Hackium initialization failed in some horrible way');
+    const browser = await this.puppeteer.launch(
+      Object.assign(options, this.launchOptions),
+    );
     this.browser = this.base.browser;
     return browser;
   }
@@ -93,7 +106,48 @@ class Hackium {
     const [page] = await browser.pages();
     this.log.debug(`navigating to ${this.config.url}`);
     await page.goto(this.config.url);
+    await waterfallMap(this.config.execute, (file) => {
+      return this.runScript(file).then((result) => console.log(result));
+    });
     return browser;
+  }
+
+  async runScript(file: string, args: any[] = [], src?: string) {
+    if (!src) {
+      src = await fsp.readFile(file, 'utf-8');
+    }
+
+    const browser = await this.getBrowser();
+    const pages = await browser.pages();
+    const [page] = pages;
+
+    const context = {
+      hackium: this,
+      console,
+      page,
+      pages,
+      browser,
+      module,
+      require: createRequire(file),
+      __dirname: path.dirname(file),
+      __filename: path.resolve(file),
+      args: this.config._,
+      __rootResult: null,
+    };
+    vm.createContext(context);
+
+    const wrappedSrc = `
+    __rootResult = (async function hackiumScript(){${src}}())
+    `;
+
+    try {
+      vm.runInContext(wrappedSrc, context);
+      const result = await context.__rootResult;
+      return result;
+    } catch (e) {
+      console.log('Error in hackium script');
+      console.log(e);
+    }
   }
 
   async close() {

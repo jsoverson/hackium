@@ -1,4 +1,4 @@
-import { Browser, CDPSession, Page } from "puppeteer";
+import { Browser, CDPSession, Page } from 'puppeteer';
 
 export const { Browser: PuppeteerBrowser } = require('puppeteer/lib/Browser');
 
@@ -19,30 +19,40 @@ export class HackiumBrowser extends PuppeteerBrowser {
   }
 
   async setWindowBounds(width: number, height: number) {
-    const window = (await this.getConnection().send('Browser.getWindowForTarget', {
-      // @ts-ignore
-      targetId: page._targetId,
-    })) as { windowId: number };
+    const window = (await this.getConnection().send(
+      'Browser.getWindowForTarget',
+      {
+        // @ts-ignore
+        targetId: page._targetId,
+      },
+    )) as { windowId: number };
     return this.getConnection().send('Browser.setWindowBounds', {
       windowId: window.windowId,
       bounds: { top: 0, left: 0, width, height },
     });
   }
+
   async setProxy(host: string, port: number) {
     var config = {
-      mode: "fixed_servers",
+      mode: 'fixed_servers',
       rules: {
         singleProxy: {
-          scheme: "http",
+          scheme: 'http',
           host: host,
-          port: port
+          port: port,
         },
-        bypassList: []
-      }
+        bypassList: [],
+      },
     };
     const msg = { value: config, scope: 'regular' };
 
-    return this.getBrowser().extension.send(`chrome.proxy.settings.set`, msg);
+    return this.extension.send(`chrome.proxy.settings.set`, msg);
+  }
+
+  async clearProxy() {
+    return this.extension.send(`chrome.proxy.settings.clear`, {
+      scope: 'regular',
+    });
   }
 
   // async getActivePage(): Promise<Page | null> {
@@ -58,5 +68,4 @@ export class HackiumBrowser extends PuppeteerBrowser {
   //   }
   //   return null;
   // }
-
 }

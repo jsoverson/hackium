@@ -11,7 +11,7 @@ export class HackiumPlugin extends PuppeteerExtraPlugin {
   }
 
   get name() {
-    return 'default'
+    return 'default';
   }
 
   get debug() {
