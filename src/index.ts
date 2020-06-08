@@ -1,21 +1,19 @@
+import { promises as fsp } from 'fs';
+import { createRequire } from 'module';
 import path from 'path';
 import vanillaPuppeteer, { LaunchOptions } from 'puppeteer';
-import { addExtra, VanillaPuppeteer, PuppeteerExtra } from 'puppeteer-extra';
+import { addExtra, PuppeteerExtra } from 'puppeteer-extra';
 import AdblockerPlugin from 'puppeteer-extra-plugin-adblocker';
 import { extensionBridge } from 'puppeteer-extra-plugin-extensionbridge';
 import { interceptor } from 'puppeteer-extra-plugin-interceptor';
-import { Arguments, defaultArguments } from './arguments';
-import {
-  browserBase,
-  HackiumBrowserBase,
-} from './extensions/hackium-browser-base';
+import vm from 'vm';
+import { Arguments, ArgumentsWithDefaults, defaultArguments } from './arguments';
+import { browserBase, HackiumBrowserBase } from './extensions/hackium-browser-base';
 import { HackiumBrowser } from './hackium-browser';
 import Logger from './logger';
-import { promises as fsp } from 'fs';
-import vm from 'vm';
 import { waterfallMap } from './waterfallMap';
+
 export { patterns } from 'puppeteer-interceptor';
-import { createRequire } from 'module';
 
 const ENVIRONMENT = [
   'GOOGLE_API_KEY=no',
@@ -35,7 +33,7 @@ class Hackium {
   log = new Logger('hackium');
   private puppeteer?: PuppeteerExtra;
 
-  private config: Arguments = defaultArguments;
+  private config: ArgumentsWithDefaults = defaultArguments;
   private base: HackiumBrowserBase;
 
   private defaultChromiumArgs: string[] = [
@@ -82,7 +80,7 @@ class Hackium {
       this.puppeteer.use(interceptor());
     }
 
-    this.puppeteer.use((this.base = browserBase(config)));
+    this.puppeteer.use((this.base = browserBase(this.config)));
   }
 
   getBrowser(): HackiumBrowser {

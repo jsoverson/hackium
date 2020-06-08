@@ -14,17 +14,24 @@ const log = new Logger('hackium:cli');
 const DEFAULT_CONFIG_NAMES = ['hackium.json', 'hackium.config.js'];
 
 const argParser = yargs
-  .options(definition)
-  .option('config', {
-    alias: 'c',
-    default: '',
-    type: 'string',
+  .commandDir('cmds')
+  .command('$0', 'start hackium', (yargs) => {
+    yargs
+      .options(definition)
+      .option('config', {
+        alias: 'c',
+        default: '',
+        type: 'string',
+      })
+  }, (argv) => {
+    main(argv);
   })
   .help();
 
 const args = argParser.argv;
+console.log(args);
 
-main(args);
+// main(args);
 
 async function main(config: Arguments) {
   const configFilesToCheck = [...DEFAULT_CONFIG_NAMES];

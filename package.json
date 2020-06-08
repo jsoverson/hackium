@@ -27,6 +27,7 @@
     "chalk": "^4.0.0",
     "debug": "^4.1.1",
     "import-fresh": "^3.2.1",
+    "promzard": "^0.3.0",
     "puppeteer": "^3.2.0",
     "puppeteer-extra": "^3.1.9",
     "puppeteer-extra-plugin-adblocker": "^2.11.3",

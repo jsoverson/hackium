@@ -1,27 +1,44 @@
 import path from 'path';
 
 export class Arguments {
-  url: string = 'https://example.com/';
-  adblock: boolean = false;
-  env: string[] = [];
-  config?: string = '';
-  inject?: string[] = [];
-  intercept?: string[] = [];
-  interceptor?: string = '';
-  pwd: string = process.cwd();
-  headless: boolean = false;
-  userDataDir: string = path.join(
+  url?: string;
+  adblock?: boolean;
+  env?: string[];
+  config?: string;
+  inject?: string[];
+  intercept?: string[];
+  interceptor?: string;
+  pwd?: string;
+  headless?: boolean;
+  userDataDir?: string;
+  devtools?: boolean;
+  watch?: boolean;
+  execute?: string[];
+  _?: any[];
+}
+
+export class ArgumentsWithDefaults extends Arguments {
+  url = 'about:blank';
+  adblock = false;
+  env = [];
+  config = '';
+  inject = [];
+  intercept = [];
+  interceptor = '';
+  pwd = process.cwd();
+  headless = false;
+  userDataDir = path.join(
     process.env.HOME || process.cwd(),
     '.hackium',
     'chromium',
   );
-  devtools: boolean = true;
-  watch: boolean = false;
-  execute: string[] = [];
-  _: any[] = [];
+  devtools = true;
+  watch = false;
+  execute = [];
+  _ = [];
 }
 
-export const defaultArguments = new Arguments();
+export const defaultArguments = new ArgumentsWithDefaults();
 
 export const definition = {
   headless: {

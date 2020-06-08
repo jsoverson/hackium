@@ -5,7 +5,7 @@ import path from 'path';
 import { Browser, LaunchOptions, Page } from 'puppeteer';
 import { Interceptor } from 'puppeteer-interceptor';
 import { patterns } from '..';
-import { Arguments } from '../arguments';
+import { Arguments, ArgumentsWithDefaults } from '../arguments';
 import { HackiumBrowser } from '../hackium-browser';
 import { HackiumPlugin } from './hackium-plugin-base';
 
@@ -24,14 +24,14 @@ type InterceptorSignature = (
 // This should get less ugly once puppeteer is distributed typescript
 
 export class HackiumBrowserBase extends HackiumPlugin {
-  protected config: Arguments;
+  protected config: ArgumentsWithDefaults;
   private interceptors: InterceptorSignature[] = [];
   private interceptorModules: string[] = [];
   private cachedInjections: string[] = [];
 
   browser?: HackiumBrowser;
 
-  constructor(config: Arguments) {
+  constructor(config: ArgumentsWithDefaults) {
     super(config);
     this.config = config;
     this.debug('browser-base initialized');
@@ -41,7 +41,7 @@ export class HackiumBrowserBase extends HackiumPlugin {
     return 'hackium:plugin:browser-base';
   }
 
-  async beforeLaunch(options: LaunchOptions) {}
+  async beforeLaunch(options: LaunchOptions) { }
 
   async afterLaunch(browser: Browser) {
     const [page] = await browser.pages();
@@ -130,6 +130,6 @@ export class HackiumBrowserBase extends HackiumPlugin {
   }
 }
 
-export function browserBase(pluginConfig: Arguments) {
+export function browserBase(pluginConfig: ArgumentsWithDefaults) {
   return new HackiumBrowserBase(pluginConfig);
 }
