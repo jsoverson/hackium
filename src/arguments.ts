@@ -6,25 +6,24 @@ export class Arguments {
   env?: string[];
   config?: string;
   inject?: string[];
-  intercept?: string[];
-  interceptor?: string;
+  interceptor?: string[];
   pwd?: string;
   headless?: boolean;
   userDataDir?: string;
   devtools?: boolean;
   watch?: boolean;
   execute?: string[];
+  chromeOutput?: boolean;
   _?: any[];
 }
 
 export class ArgumentsWithDefaults extends Arguments {
-  url = 'about:blank';
+  url?: string = undefined;
   adblock = false;
-  env = [];
+  env: string[] = [];
   config = '';
-  inject = [];
-  intercept = [];
-  interceptor = '';
+  inject: string[] = [];
+  interceptor: string[] = [''];
   pwd = process.cwd();
   headless = false;
   userDataDir = path.join(
@@ -34,8 +33,9 @@ export class ArgumentsWithDefaults extends Arguments {
   );
   devtools = true;
   watch = false;
-  execute = [];
-  _ = [];
+  execute: string[] = [];
+  chromeOutput = false;
+  _: string[] = [];
 }
 
 export const defaultArguments = new ArgumentsWithDefaults();
@@ -53,13 +53,13 @@ export const definition = {
   adblock: {
     describe: 'turn on ad blocker',
     default: defaultArguments.adblock,
-    demandOption: false,
+    // demandOption: false,
   },
   url: {
     alias: 'u',
     describe: 'starting URL',
     default: defaultArguments.url,
-    demandOption: true,
+    // demandOption: true,
   },
   env: {
     array: true,
@@ -78,15 +78,9 @@ export const definition = {
     describe: 'hackium script to execute',
     default: defaultArguments.execute,
   },
-  intercept: {
+  interceptor: {
     alias: 'i',
     array: true,
-    describe: 'url patterns to intercept',
-    default: defaultArguments.intercept,
-  },
-  interceptor: {
-    alias: 'I',
-    string: true,
     describe: 'interceptor module that will handle intercepted responses',
     default: defaultArguments.interceptor,
   },
@@ -108,4 +102,9 @@ export const definition = {
     boolean: true,
     default: defaultArguments.watch,
   },
+  chromeOutput: {
+    describe: 'print Chrome stderr & stdout logging',
+    boolean: true,
+    default: defaultArguments.chromeOutput
+  }
 };

@@ -2,19 +2,22 @@
   "name": "hackium",
   "version": "0.0.1",
   "description": "TODO",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "compile": "npm run clean && tsc --declaration",
+    "build": "tsc --declaration",
+    "compile": "npm run build",
     "clean": "rm -rf dist",
+    "copyfiles": "copyfiles src/**/*.js dist",
+    "prebuild": "npm run clean && mkdir dist && npm run copyfiles",
+    "prewatch": "npm run prebuild",
     "prepublishOnly": "npm run compile",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
     "watch": "tsc -w",
     "test": "mocha"
   },
   "bin": {
-    "hackium": "./dist/cli.js"
+    "hackium": "./dist/src/cli.js"
   },
   "directories": {
     "dist": "./dist",
@@ -24,23 +27,27 @@
   "author": "Jarrod Overson <jsoverson@gmail.com>",
   "license": "ISC",
   "dependencies": {
+    "@types/find-root": "^1.1.1",
     "chalk": "^4.0.0",
     "debug": "^4.1.1",
+    "find-root": "^1.1.0",
     "import-fresh": "^3.2.1",
     "promzard": "^0.3.0",
     "puppeteer": "^3.2.0",
     "puppeteer-extra": "^3.1.9",
     "puppeteer-extra-plugin-adblocker": "^2.11.3",
-    "puppeteer-extra-plugin-interceptor": "^0.2.2",
-    "puppeteer-interceptor": "^0.2.1",
+    "puppeteer-interceptor": "^0.1.1",
     "yargs": "^15.3.1"
   },
   "devDependencies": {
+    "@types/chai": "^4.2.11",
     "@types/debug": "^4.1.5",
     "@types/mocha": "^7.0.2",
     "@types/node": "^13.13.2",
     "@types/serve-handler": "^6.1.0",
     "@types/yargs": "^15.0.4",
+    "chai": "^4.2.0",
+    "copyfiles": "^2.3.0",
     "mocha": "^7.1.1",
     "prettier": "^2.0.5",
     "serve-handler": "^6.1.2",

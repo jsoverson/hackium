@@ -29,9 +29,6 @@ const argParser = yargs
   .help();
 
 const args = argParser.argv;
-console.log(args);
-
-// main(args);
 
 async function main(config: Arguments) {
   const configFilesToCheck = [...DEFAULT_CONFIG_NAMES];
@@ -56,16 +53,21 @@ async function main(config: Arguments) {
 
   hackium
     .cliBehavior()
-    .then(async () => {
+    .then(() => {
       log.info('Hackium launched');
+    })
+    .catch((e) => {
+      log.error('Hackium failed during bootup and may be in an unstable state.');
+      log.error(e);
+    })
+    .finally(async () => {
       const browser = await hackium.getBrowser();
 
       const replInstance = repl.start('> ');
       replInstance.context.hackium = hackium;
       replInstance.context.browser = browser;
       replInstance.context.cdp = browser.connection;
-      replInstance.context.setProxy = browser.setProxy.bind(browser);
-      replInstance.context.clearProxy = browser.clearProxy.bind(browser);
+      replInstance.context.extensionBridge = browser.extension;
       replInstance.on('exit', () => {
         browser.close();
       });

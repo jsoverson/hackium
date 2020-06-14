@@ -4,14 +4,16 @@ import path from 'path';
 import vanillaPuppeteer, { LaunchOptions } from 'puppeteer';
 import { addExtra, PuppeteerExtra } from 'puppeteer-extra';
 import AdblockerPlugin from 'puppeteer-extra-plugin-adblocker';
-import { extensionBridge } from 'puppeteer-extra-plugin-extensionbridge';
-import { interceptor } from 'puppeteer-extra-plugin-interceptor';
+import { extensionBridge, ExtensionBridge } from 'puppeteer-extra-plugin-extensionbridge';
 import vm from 'vm';
 import { Arguments, ArgumentsWithDefaults, defaultArguments } from './arguments';
-import { browserBase, HackiumBrowserBase } from './extensions/hackium-browser-base';
 import { HackiumBrowser } from './hackium-browser';
 import Logger from './logger';
 import { waterfallMap } from './waterfallMap';
+import { EventEmitter } from 'events';
+import findRoot from 'find-root';
+import { overridePuppeteerMethods, resetOverriddenPuppeteerMethods } from './puppeteer-overrides';
+import { HackiumClientEvent } from './events';
 
 export { patterns } from 'puppeteer-interceptor';
 
@@ -28,18 +30,30 @@ function setEnv(env: string[] = []) {
   });
 }
 
-class Hackium {
+declare module 'puppeteer' {
+  export interface Browser {
+    connection: CDPSession;
+    extension: ExtensionBridge;
+  }
+  // extending the events that can fire from Page objects
+  export interface PageEventObj {
+    'hackiumclient:pageActivated': HackiumClientEvent;
+  }
+}
+
+class Hackium extends EventEmitter {
   browser?: HackiumBrowser;
   log = new Logger('hackium');
   private puppeteer?: PuppeteerExtra;
 
-  private config: ArgumentsWithDefaults = defaultArguments;
-  private base: HackiumBrowserBase;
+  config: ArgumentsWithDefaults = defaultArguments;
 
   private defaultChromiumArgs: string[] = [
     '--disable-infobars',
     '--no-default-browser-check',
-    `--load-extension=${path.join(__dirname, '..', 'theme')}`,
+    `--load-extension=${path.join(findRoot(__dirname), 'extensions', 'theme')}`,
+    `--homepage=file://${path.join(findRoot(__dirname), 'pages', 'homepage', 'index.html')}`,
+    `file://${path.join(findRoot(__dirname), 'pages', 'homepage', 'index.html')}`
   ];
 
   private launchOptions: LaunchOptions = {
@@ -49,6 +63,7 @@ class Hackium {
   };
 
   constructor(config: Arguments = defaultArguments) {
+    super();
     this.log.debug('contructing Hackium instance');
     if (config) this.config = Object.assign({}, this.config, config);
     this.log.debug('Using config:');
@@ -58,13 +73,23 @@ class Hackium {
     setEnv(ENVIRONMENT);
 
     this.launchOptions.headless = this.config.headless;
-    if (this.config.userDataDir)
+    if (this.config.userDataDir) {
       this.launchOptions.userDataDir = this.config.userDataDir;
+    }
     this.launchOptions.args = this.defaultChromiumArgs;
+    if (this.config.chromeOutput) {
+      this.launchOptions.dumpio = true;
+      this.defaultChromiumArgs.push(
+        '--enable-logging=stderr',
+        '--v=1',
+      );
+    }
 
     this.puppeteer = addExtra(vanillaPuppeteer);
 
-    this.puppeteer.use(extensionBridge());
+    this.puppeteer.use(extensionBridge({
+      newtab: `file://${path.join(findRoot(__dirname), 'pages', 'newtab', 'index.html')}`
+    }));
 
     if (this.config.adblock) {
       this.log.debug('using adblocker');
@@ -75,12 +100,14 @@ class Hackium {
       );
     }
 
-    if (this.config.interceptor) {
-      this.log.debug('using interceptor');
-      this.puppeteer.use(interceptor());
-    }
-
-    this.puppeteer.use((this.base = browserBase(this.config)));
+    overridePuppeteerMethods({
+      page: {
+        injections: this.config.inject,
+        interceptors: this.config.interceptor,
+        watch: this.config.watch,
+        pwd: this.config.pwd
+      }
+    });
   }
 
   getBrowser(): HackiumBrowser {
@@ -90,20 +117,43 @@ class Hackium {
   }
 
   async launch(options: LaunchOptions = {}) {
-    if (!this.puppeteer)
-      throw new Error('Hackium initialization failed in some horrible way');
+    if (!this.puppeteer) {
+      throw new Error('Hackium initialization failed - no access to puppeteer object. Error:Puppeteer');
+    }
     const browser = await this.puppeteer.launch(
       Object.assign(options, this.launchOptions),
     );
-    this.browser = this.base.browser;
-    return browser;
+
+    this.browser = await HackiumBrowser.create(browser);
+
+    const [page] = await this.browser.pages();
+    this.browser.setActivePage(page);
+    browser.connection = await page.target().createCDPSession();
+
+    await browser.extension.addListener('chrome.tabs.onActivated', async ({ tabId, windowId }) => {
+      const code = `window.postMessage({owner:'hackium', name:'pageActivated', data:{tabId:${tabId}, windowId:${windowId}}})`;
+      this.log.debug(`chrome.tabs.onActivated triggered. Calling ${code}`);
+      try {
+        const result = await browser.extension.send('chrome.tabs.executeScript', tabId, {
+          code,
+          matchAboutBlank: true
+        })
+      } catch (e) {
+        this.log.error('Error posting message for pageActivated');
+        this.log.error(e.message);
+      }
+    })
+
+    return this.browser;
   }
 
   async cliBehavior() {
     const browser = await this.launch();
     const [page] = await browser.pages();
-    this.log.debug(`navigating to ${this.config.url}`);
-    await page.goto(this.config.url);
+    if (this.config.url) {
+      this.log.debug(`navigating to ${this.config.url}`);
+      await page.goto(this.config.url);
+    }
     await waterfallMap(this.config.execute, (file) => {
       return this.runScript(file).then((result) => console.log(result));
     });
@@ -149,7 +199,11 @@ class Hackium {
   }
 
   async close() {
-    return this.getBrowser().close();
+    if (this.browser) return this.browser.close();
+  }
+
+  async cleanup() {
+    resetOverriddenPuppeteerMethods();
   }
 }
 

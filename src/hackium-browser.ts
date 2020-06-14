@@ -1,11 +1,32 @@
-import { Browser, CDPSession, Page } from 'puppeteer';
+import { Browser, Page } from 'puppeteer';
+import Logger from './logger';
+import Hackium from '.';
 
 export const { Browser: PuppeteerBrowser } = require('puppeteer/lib/Browser');
 
+declare module 'puppeteer' {
+  export interface Page {
+    _id: number;
+  }
+  export interface Browser {
+    hackium: HackiumBrowser;
+  }
+}
+
+// This is hacky but should not be refactored until puppeteer drops with full TS support so we can extend
+// "Browser" and other classes properly
+
+export interface HackiumBrowser extends Browser { }
+
 export class HackiumBrowser extends PuppeteerBrowser {
-  static create(browser: Browser): HackiumBrowser {
+  log: Logger = new Logger('hackium:browser');
+  activePage?: Page;
+
+  static async create(browser: Browser): Promise<HackiumBrowser> {
     const props = Object.getOwnPropertyDescriptors(HackiumBrowser.prototype);
     const hackiumBrowser = Object.create(browser, props);
+    browser.hackium = hackiumBrowser;
+    hackiumBrowser.log = new Logger('hackium:browser');
     return hackiumBrowser;
   }
 
@@ -46,26 +67,25 @@ export class HackiumBrowser extends PuppeteerBrowser {
     };
     const msg = { value: config, scope: 'regular' };
 
+    this.log.debug(`sending request to change proxy`);
     return this.extension.send(`chrome.proxy.settings.set`, msg);
   }
 
   async clearProxy() {
+    this.log.debug(`sending request to clear proxy`);
     return this.extension.send(`chrome.proxy.settings.clear`, {
       scope: 'regular',
     });
   }
 
-  // async getActivePage(): Promise<Page | null> {
-  //   const visibilityChecks = (await this.pages()).map((p: Page) =>
-  //     p.evaluate(`document.visibilityState]`).then((res) => [p, res]),
-  //   );
-  //   const results = await Promise.allSettled(visibilityChecks);
-  //   for (let result of results) {
-  //     if (result.status === 'fulfilled') {
-  //       const page = result.value[0] as Page;
-  //       return page;
-  //     }
-  //   }
-  //   return null;
-  // }
+  setActivePage(page: Page) {
+    this.log.debug(`setting active page (${page.url()})`);
+    this.activePage = page;
+  }
+
+  getActivePage() {
+    if (!this.activePage) throw new Error('no active page in browser instance');
+    return this.activePage;
+  }
+
 }

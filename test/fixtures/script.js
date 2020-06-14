@@ -1,4 +1,4 @@
-
+//@ts-nocheck
 await page.click('#button');
 await page.click('#button');
 

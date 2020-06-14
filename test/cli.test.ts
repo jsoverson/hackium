@@ -1,14 +1,10 @@
-import assert from 'assert';
+import { expect } from 'chai';
 import fs from 'fs';
 import path from 'path';
-
-import { start, stop } from './server';
-
-import { defaultArguments, Arguments } from '../src/arguments';
-
-import { getArgs } from './helper';
-
 import Hackium from '../src';
+import { Arguments } from '../src/arguments';
+import { getArgs } from './helper';
+import { start, stop } from './server';
 
 const fsp = fs.promises;
 
@@ -16,9 +12,10 @@ const port = 5000;
 let baseUrl = `http://127.0.0.1:${port}/`;
 
 describe('CLI', function () {
-  this.timeout(6000);
+  this.timeout(60000);
   let dir = '/nonexistant';
   let baseArgs = '';
+  let instance: Hackium | undefined;
 
   before((done) => {
     dir = '/tmp/randomDir' + Math.random();
@@ -41,47 +38,51 @@ describe('CLI', function () {
     });
   });
 
+  afterEach(async () => {
+    console.log('cleaning up');
+    if (instance) {
+      instance.cleanup();
+      return instance.close();
+    }
+  })
+
   it('Should go to a default URL', async () => {
-    const instance = new Hackium(getArgs(`${baseArgs}`));
+    instance = new Hackium(getArgs(`${baseArgs}`));
     const browser = await instance.cliBehavior();
     const [page] = await browser.pages();
     const title = await page.title();
-    assert.equal(title, 'Test page');
-    return instance.close();
+    expect(title).to.equal('Test page');
   });
 
   it('Should inject evaluateOnNewDocument scripts', async () => {
-    const instance = new Hackium(
+    instance = new Hackium(
       getArgs(`${baseArgs} --inject fixtures/global-var.js`),
     );
     const browser = await instance.cliBehavior();
     const [page] = await browser.pages();
     const globalValue = await page.evaluate('window.globalVar');
-    assert.equal(globalValue, 'globalVar');
-    return instance.close();
+    expect(globalValue).to.equal('globalVar');
   });
 
   it('Should intercept scripts', async () => {
-    const instance = new Hackium(
-      getArgs(`${baseArgs} --i "*.js" --I fixtures/interceptor.js`),
+    instance = new Hackium(
+      getArgs(`${baseArgs} --i fixtures/interceptor.js`),
     );
     const browser = await instance.cliBehavior();
     const [page] = await browser.pages();
     const value = await page.evaluate('window.interceptedVal');
-    assert.equal(value, 'interceptedValue');
-    return instance.close();
+    expect(value).to.equal('interceptedValue');
   });
 
   it('Should create userDataDir', async () => {
-    const instance = new Hackium(getArgs(`${baseArgs}`));
+    instance = new Hackium(getArgs(`${baseArgs}`));
     await instance.cliBehavior();
     const stat = await fsp.stat(dir);
-    assert(stat.isDirectory());
-    return instance.close();
+    expect(stat.isDirectory()).to.be.true;
   });
 
   it('Should read local config', async () => {
-    const instance = new Hackium({
+    instance = new Hackium({
       pwd: __dirname,
       // headless: true,
       url: `${baseUrl}/anything`,
@@ -89,20 +90,15 @@ describe('CLI', function () {
     const browser = await instance.cliBehavior();
     const [page] = await browser.pages();
     const url = page.url();
-    assert.equal(url, `${baseUrl}/anything`);
-    return instance.close();
+    expect(url).to.equal(`${baseUrl}/anything`);
   });
 
   it('Should merge defaults with passed config', async () => {
-    const instance = new Hackium({
+    instance = new Hackium({
       headless: false,
       userDataDir: dir,
     } as Arguments);
-    const browser = await instance.cliBehavior();
-    const [page] = await browser.pages();
-    const url = page.url();
-    assert.equal(url, defaultArguments.url);
-    return instance.close();
+    expect(instance.config.pwd).equal(process.cwd());
   });
 
   it('Should watch for and apply changes on a reload', async () => {
@@ -115,8 +111,8 @@ describe('CLI', function () {
       origSrc.replace('interceptedValue', 'interceptedValTemp'),
       'utf8',
     );
-    const instance = new Hackium(
-      getArgs(`${baseArgs} --i "*.js" --I fixtures/interceptorTemp.js -w`),
+    instance = new Hackium(
+      getArgs(`${baseArgs} --i fixtures/interceptorTemp.js -w`),
     );
     const browser = await instance.cliBehavior();
     let [page] = await browser.pages();
@@ -124,7 +120,7 @@ describe('CLI', function () {
     page.setCacheEnabled(false);
 
     let value = await page.evaluate('window.interceptedVal');
-    assert.equal(value, 'interceptedValTemp');
+    expect(value).to.equal('interceptedValTemp');
 
     await fsp.writeFile(
       tempPath,
@@ -134,10 +130,9 @@ describe('CLI', function () {
     await page.reload();
 
     value = await page.evaluate('window.interceptedVal');
-    assert.equal(value, 'interceptedValHotload');
+    expect(value).to.equal('interceptedValHotload');
 
     await fsp.unlink(tempPath);
-    return instance.close();
   });
 
   it('Should watch for and apply changes on a new tab', async () => {
@@ -150,8 +145,8 @@ describe('CLI', function () {
       origSrc.replace('interceptedValue', 'interceptedValTemp'),
       'utf8',
     );
-    const instance = new Hackium(
-      getArgs(`${baseArgs} --i "*.js" --I fixtures/interceptorTemp.js -w`),
+    instance = new Hackium(
+      getArgs(`${baseArgs} --i fixtures/interceptorTemp.js -w`),
     );
     const browser = await instance.cliBehavior();
     let [page] = await browser.pages();
@@ -159,7 +154,7 @@ describe('CLI', function () {
     page.setCacheEnabled(false);
 
     let value = await page.evaluate('window.interceptedVal');
-    assert.equal(value, 'interceptedValTemp');
+    expect(value).equal('interceptedValTemp');
 
     await fsp.writeFile(
       tempPath,
@@ -171,16 +166,15 @@ describe('CLI', function () {
     await page.goto(baseUrl);
 
     value = await page.evaluate('window.interceptedVal');
-    assert.equal(value, 'interceptedValHotload');
+    expect(value).to.equal('interceptedValHotload');
 
     await fsp.unlink(tempPath);
-    return instance.close();
   });
 
   it('Should run hackium scripts', async () => {
     const scriptPath = path.join(__dirname, 'fixtures', 'script.js');
 
-    const instance = new Hackium(
+    instance = new Hackium(
       getArgs(`${baseArgs} -e ${scriptPath} -- ${baseUrl}two.html`),
     );
     const browser = await instance.cliBehavior();
@@ -188,19 +182,18 @@ describe('CLI', function () {
 
     const clicksEl = await pageOrig.$('#clicks');
     const numClicks = await pageOrig.evaluate(
-      (clicksEl) => clicksEl.innerHTML,
+      (clicksEl: HTMLElement) => clicksEl.innerHTML,
       clicksEl,
     );
 
-    assert.equal(numClicks, '2');
+    expect(numClicks).to.equal('2');
 
     const url = pageNew.url();
-    assert(url.match(/two/));
+    expect(url).to.match(/two/);
 
     const bodyEl = await pageNew.$('body');
-    const body = await pageNew.evaluate((bodyEl) => bodyEl.innerHTML, bodyEl);
-    assert.equal(body, require('./fixtures/module'));
-
-    return instance.close();
+    const body = await pageNew.evaluate((bodyEl: HTMLElement) => bodyEl.innerHTML, bodyEl);
+    expect(body).to.equal(require('./fixtures/module'));
   });
+
 });
