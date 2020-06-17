@@ -42,7 +42,7 @@ describe('Page', function () {
     })
   });
 
-  xit('Should update active page as tabs open', async () => {
+  it.only('Should update active page as tabs open', async () => {
     console.log('\n\n\na\n\n\n\n');
     const [page] = await browser.pages();
     console.log('\n\n\nb\n\n\n\n');

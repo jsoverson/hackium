@@ -6,7 +6,11 @@ import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
 import Logger from './logger';
 import { ExtensionBridge } from 'puppeteer-extra-plugin-extensionbridge';
 import { HackiumPage } from './hackium-page';
-
+import assert from 'assert';
+import Protocol from 'puppeteer/lib/protocol';
+import { Target } from 'puppeteer/lib/Target';
+import { Events } from 'puppeteer/lib/Events';
+import { HackiumTarget } from './hackium-target';
 export const { Browser: PuppeteerBrowser } = require('puppeteer/lib/Browser');
 
 declare module 'puppeteer/lib/Browser' {
@@ -21,6 +25,7 @@ export class HackiumBrowser extends Browser {
   log: Logger = new Logger('hackium:browser');
   activePage?: Page;
   connection: Connection;
+  _targets: Map<string, HackiumTarget> = new Map();
 
   constructor(
     connection: Connection,
@@ -40,6 +45,43 @@ export class HackiumBrowser extends Browser {
 
   newPage(): Promise<HackiumPage> {
     return super.newPage() as Promise<HackiumPage>;
+  }
+
+  async _targetCreated(
+    event: Protocol.Target.targetCreatedPayload
+  ): Promise<void> {
+    const targetInfo = event.targetInfo;
+    const { browserContextId } = targetInfo;
+    const context =
+      browserContextId && this._contexts.has(browserContextId)
+        ? this._contexts.get(browserContextId)
+        : this._defaultContext;
+
+    assert(context, 'Brower context should not be null or undefined');
+    this.log.debug('Creating new target %o', targetInfo);
+    const target = new HackiumTarget(
+      targetInfo,
+      context,
+      () => this._connection.createSession(targetInfo),
+      this._ignoreHTTPSErrors,
+      this._defaultViewport || null
+    );
+
+    assert(
+      !this._targets.has(event.targetInfo.targetId),
+      'Target should not exist before targetCreated'
+    );
+    this._targets.set(event.targetInfo.targetId, target);
+
+    if (targetInfo.type === 'page') {
+      // page objects are lazily created, so merely accessing this will instrument the page properly.
+      await target.page();
+    }
+
+    if (await target._initializedPromise) {
+      this.emit(Events.Browser.TargetCreated, target);
+      context.emit(Events.BrowserContext.TargetCreated, target);
+    }
   }
 
   // async _createPageInContext(contextId?: string, url: string = 'about:blank'): Promise<Page> {

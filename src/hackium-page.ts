@@ -45,18 +45,22 @@ type InterceptorSignature = (
 
 
 export class HackiumPage extends Page {
+  log = new Logger('hackium:page');
   instrumentationConfig: PageInstrumentationConfig = {
     injections: [],
     interceptors: [],
     watch: false,
     pwd: process.env.PWD || '/tmp'
   }
-  log = new Logger('hackium:page');
   private interceptorModules: Interceptor[] = [];
   private cachedInjections: string[] = [];
   private defaultInjections = [
     path.join(findRoot(__dirname), 'client', 'hackium.js')
   ];
+
+  constructor(client: CDPSession, target: Target, ignoreHTTPSErrors: boolean) {
+    super(client, target, ignoreHTTPSErrors);
+  }
 
   static hijackCreate = function (config: PageInstrumentationConfig) {
     Page.create = async function (
