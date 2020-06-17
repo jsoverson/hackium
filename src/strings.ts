@@ -1,5 +1,8 @@
-export const strings = new Map([
+import { assert } from "console";
+import { SafeMap } from "./SafeMap";
+
+export const strings = new SafeMap([
   ["clientid", "hackium"],
   ["clienteventhandler", "__hackium_internal_onEvent"],
-  ["extensionid", require('puppeteer-extra-plugin-extensionbridge/extension/manifest.json').key]
+  ["extensionid", require('puppeteer-extensionbridge/extension/manifest.json').key]
 ])

@@ -16,6 +16,8 @@ import { PuppeteerLifeCycleEvent } from 'puppeteer/lib/LifecycleWatcher';
 import { CDPSession } from 'puppeteer/lib/Connection';
 import { Target } from 'puppeteer/lib/Target';
 import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
+import { HTTPResponse } from 'puppeteer/lib/HTTPResponse';
+import { waterfallMap } from './waterfallMap';
 
 const metadata = require(path.join(findRoot(__dirname), 'package.json'));
 
@@ -46,6 +48,8 @@ type InterceptorSignature = (
 
 export class HackiumPage extends Page {
   log = new Logger('hackium:page');
+  clientLoaded = false;
+  queuedActions: (() => void | Promise<void>)[] = [];
   instrumentationConfig: PageInstrumentationConfig = {
     injections: [],
     interceptors: [],
@@ -71,11 +75,26 @@ export class HackiumPage extends Page {
     ): Promise<HackiumPage> {
       const page = new HackiumPage(client, target, ignoreHTTPSErrors);
       page.log.debug('Creating page');
-      //@ts-ignore I hate private properties.
-      await page._initialize();
-      if (defaultViewport) await page.setViewport(defaultViewport);
-      await page.instrumentSelf(config);
+      page.instrumentationConfig = config;
+      // console.log(defaultViewport);
+      // if (defaultViewport) await page.setViewport(defaultViewport);
+      await page.__initialize(config);
       return page;
+    }
+  }
+
+  private async __initialize(config: PageInstrumentationConfig) {
+    //@ts-ignore I hate private methods.
+    await super._initialize();
+    if (this.interceptorModules.length === 0) this.loadInterceptors();
+    await this.instrumentSelf(config);
+  }
+
+  executeOrQueue(action: () => void | Promise<void>) {
+    if (this.clientLoaded) {
+      return action;
+    } else {
+      this.queuedActions.push(action);
     }
   }
 
@@ -94,25 +113,31 @@ export class HackiumPage extends Page {
     return super.browserContext() as HackiumBrowserContext;
   }
 
-  // TODO 4.0.0 bugs
+  // Have to override this due to a Puppeteer@4 type bug. Should be able to remove soon
   async goto(
     url: string,
     options?: WaitForOptions & { referer?: string }
-  ) {
+  ): Promise<HTTPResponse> {
     return super.goto(url, options || {});
   }
 
-  async instrumentSelf(config: PageInstrumentationConfig = this.instrumentationConfig) {
+  private async instrumentSelf(config: PageInstrumentationConfig = this.instrumentationConfig) {
     this.instrumentationConfig = config;
-    this.log.debug(`instrumenting page ${this.url()} with config:`);
-    this.log.debug(config);
+    this.log.debug(`instrumenting page ${this.url()} with config %o`, config);
 
-    await this.exposeFunction(strings.get('clienteventhandler')!, (data: any) => {
+    await this.exposeFunction(strings.get('clienteventhandler'), (data: any) => {
       const name = data.name;
-      console.log(data);
-      this.log.debug(`Received event '${name}' from client`);
+      this.log.debug(`Received event '${name}' from client with data %o`, data);
       this.emit(`hackiumclient:${name}`, new HackiumClientEvent(name, data));
     });
+
+    this.on('hackiumclient:onClientLoaded', (e: HackiumClientEvent) => {
+      this.clientLoaded = true;
+      this.log.debug(`client loaded, running ${this.queuedActions.length} queued actions`);
+      waterfallMap(this.queuedActions, async (action: () => void | Promise<void>, i: number) => {
+        return await action();
+      });
+    })
 
     this.on('hackiumclient:pageActivated', (e: HackiumClientEvent) => {
       this.browser().setActivePage(this);
@@ -128,9 +153,7 @@ export class HackiumPage extends Page {
     }
 
     const browser = this.browserContext().browser();
-    if (!browser) throw new Error('Browser not launched yet');
 
-    this.loadInterceptors();
     this.interceptorModules.forEach((interceptor) => {
       this.log.debug(`Registering interceptor for pattern '${interceptor.intercept}'`);
       intercept(this, interceptor.intercept, {
@@ -148,7 +171,7 @@ export class HackiumPage extends Page {
     });
   }
 
-  loadInterceptors() {
+  private loadInterceptors() {
     this.log.debug(`loading ${this.instrumentationConfig.interceptors.length} interceptor modules`)
     this.instrumentationConfig.interceptors.forEach((modulePath) => {
       try {
@@ -168,7 +191,7 @@ export class HackiumPage extends Page {
     this.cacheInjections();
   }
 
-  async cacheInjections(files = this.instrumentationConfig.injections) {
+  private async cacheInjections(files = this.instrumentationConfig.injections) {
     this.log.debug(`reading files to inject on new document`);
     files = files.concat(this.defaultInjections);
     if (!files) return [];
@@ -181,7 +204,7 @@ export class HackiumPage extends Page {
             src
               .replace('%%%HACKIUM_VERSION%%%', metadata.version)
               .replace(/%%%(.+?)%%%/g, (m, $1) => {
-                return strings.get($1)!
+                return strings.get($1)
               })
           )
           .catch((e) => {
@@ -197,8 +220,5 @@ export class HackiumPage extends Page {
     return injections;
   }
 
-  foo() {
-    console.log('hey');
-  }
 }
 

@@ -1,22 +1,23 @@
+import assert from 'assert';
 import { ChildProcess } from 'child_process';
+import findRoot from 'find-root';
+import path from 'path';
+import { decorateBrowser, ExtensionBridge, NullExtensionBridge } from 'puppeteer-extensionbridge';
 import { Browser } from 'puppeteer/lib/Browser';
 import { Connection } from 'puppeteer/lib/Connection';
-import { Page } from 'puppeteer/lib/Page';
-import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
-import Logger from './logger';
-import { ExtensionBridge } from 'puppeteer-extra-plugin-extensionbridge';
-import { HackiumPage } from './hackium-page';
-import assert from 'assert';
-import Protocol from 'puppeteer/lib/protocol';
-import { Target } from 'puppeteer/lib/Target';
 import { Events } from 'puppeteer/lib/Events';
-import { HackiumTarget } from './hackium-target';
-export const { Browser: PuppeteerBrowser } = require('puppeteer/lib/Browser');
+import { Page } from 'puppeteer/lib/Page';
+import Protocol from 'puppeteer/lib/protocol';
+import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
+import { Target } from 'puppeteer/lib/Target';
+import { HackiumPage } from './hackium-page';
+import { HackiumTarget, TargetEmittedEvents } from './hackium-target';
+import Logger from './logger';
 
-declare module 'puppeteer/lib/Browser' {
-  export interface Browser {
-    extension: ExtensionBridge;
-  }
+const newTabTimeout = 500;
+
+export enum HackiumBrowserEmittedEvents {
+  ActivePageChanged = 'activePageChanged'
 }
 
 export type BrowserCloseCallback = () => Promise<void> | void;
@@ -25,7 +26,10 @@ export class HackiumBrowser extends Browser {
   log: Logger = new Logger('hackium:browser');
   activePage?: Page;
   connection: Connection;
+  extension: ExtensionBridge = new NullExtensionBridge();
   _targets: Map<string, HackiumTarget> = new Map();
+  newtab = `file://${path.join(findRoot(__dirname), 'pages', 'newtab', 'index.html')}`;
+  private _initializationPromise: Promise<unknown>;
 
   constructor(
     connection: Connection,
@@ -37,7 +41,43 @@ export class HackiumBrowser extends Browser {
   ) {
     super(connection, contextIds, ignoreHTTPSErrors, defaultViewport, process, closeCallback);
     this.connection = connection;
+    this.log.debug('Hackium browser created');
+    this._initializationPromise = this._initialize();
   }
+
+  private _initialize() {
+    return (async () => {
+      this.log.debug('initializing and decorating browser instance');
+      await decorateBrowser(this, { newtab: this.newtab });
+      let lastActive = { tabId: -1, windowId: -1 };
+      await this.extension.addListener('chrome.tabs.onActivated', async ({ tabId, windowId }) => {
+        lastActive = { tabId, windowId };
+        const code = `
+          window.postMessage({owner:'hackium', name:'pageActivated', data:{tabId:${tabId}, windowId:${windowId}}});
+        `;
+        this.log.debug(`chrome.tabs.onActivated triggered. Calling ${code}`);
+        await this.extension.send('chrome.tabs.executeScript', tabId, { code })
+      });
+      await this.extension.addListener('chrome.tabs.onUpdated', async (tabId) => {
+        if (tabId === lastActive.tabId) {
+          const code = `
+            window.postMessage({owner:'hackium', name:'pageActivated', data:{tabId:${tabId}}});
+          `;
+          this.log.debug(`Active page updated. Calling ${code}`);
+          await this.extension.send('chrome.tabs.executeScript', tabId, { code })
+        }
+      });
+
+      await this.waitForTarget((target: Target) => target.type() === 'page');
+      const [page] = await this.pages();
+      this.setActivePage(page);
+    })();
+  }
+
+  initialization() {
+    return this._initializationPromise;
+  }
+
 
   pages() {
     return super.pages() as Promise<HackiumPage[]>;
@@ -73,9 +113,31 @@ export class HackiumBrowser extends Browser {
     );
     this._targets.set(event.targetInfo.targetId, target);
 
+
+    if (targetInfo.url === 'chrome://newtab/') {
+      this.log.debug('New tab opened, waiting for it to navigate to custom newtab');
+      await new Promise((resolve, reject) => {
+        let done = false;
+        const changedHandler = (targetInfo: Protocol.Target.TargetInfo) => {
+          this.log.debug('New tab target info changed %o', targetInfo);
+          if (targetInfo.url === this.newtab) {
+            this.log.debug('New tab navigation complete, continuing');
+            resolve();
+            target.off(TargetEmittedEvents.TargetInfoChanged, changedHandler);
+          }
+        };
+        target.on(TargetEmittedEvents.TargetInfoChanged, changedHandler);
+        setTimeout(() => {
+          this.log.debug(`New tab navigation timed out.`);
+          if (!done) reject(`Timeout of ${newTabTimeout} exceeded`);
+          target.off(TargetEmittedEvents.TargetInfoChanged, changedHandler);
+        }, newTabTimeout);
+      });
+    }
+
     if (targetInfo.type === 'page') {
       // page objects are lazily created, so merely accessing this will instrument the page properly.
-      await target.page();
+      const page = await target.page();
     }
 
     if (await target._initializedPromise) {
@@ -148,8 +210,10 @@ export class HackiumBrowser extends Browser {
   }
 
   setActivePage(page: Page) {
+    if (!page) this.log.debug(`tried to set active page to invalid page object.`);
     this.log.debug(`setting active page (${page.url()})`);
     this.activePage = page;
+    this.emit(HackiumBrowserEmittedEvents.ActivePageChanged, page);
   }
 
   getActivePage() {

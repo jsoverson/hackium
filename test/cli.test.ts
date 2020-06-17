@@ -32,9 +32,7 @@ describe('CLI', function () {
   });
 
   afterEach(async () => {
-    console.log('cleaning up');
     if (instance) {
-      instance.cleanup();
       return instance.close();
     }
   })

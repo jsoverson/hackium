@@ -3,15 +3,13 @@ import findRoot from 'find-root';
 import { promises as fsp } from 'fs';
 import { createRequire } from 'module';
 import path from 'path';
-import { addExtra, PuppeteerExtra, VanillaPuppeteer } from 'puppeteer-extra';
-import AdblockerPlugin from 'puppeteer-extra-plugin-adblocker';
-import { extensionBridge } from 'puppeteer-extra-plugin-extensionbridge';
+import { mergeLaunchOptions } from 'puppeteer-extensionbridge';
 import { BrowserOptions, ChromeArgOptions, LaunchOptions } from 'puppeteer/lib/launcher/LaunchOptions';
 import vm from 'vm';
 import { Arguments, ArgumentsWithDefaults, defaultArguments } from './arguments';
 import { HackiumBrowser, BrowserCloseCallback } from './hackium-browser';
 import Logger from './logger';
-import vanillaPuppeteer from './puppeteer';
+import puppeteer from './puppeteer';
 import { waterfallMap } from './waterfallMap';
 import { Browser } from 'puppeteer/lib/Browser';
 import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
@@ -23,11 +21,6 @@ export { patterns } from 'puppeteer-interceptor';
 
 declare module 'puppeteer/lib/Launcher' {
   interface ChromeLauncher {
-    launch(options: LaunchOptions & ChromeArgOptions & BrowserOptions): Promise<HackiumBrowser>
-  }
-}
-declare module 'puppeteer-extra' {
-  interface PuppeteerExtra {
     launch(options: LaunchOptions & ChromeArgOptions & BrowserOptions): Promise<HackiumBrowser>
   }
 }
@@ -69,8 +62,6 @@ class Hackium extends EventEmitter {
   browser?: HackiumBrowser;
   log = new Logger('hackium');
 
-  private puppeteer?: PuppeteerExtra;
-
   config: ArgumentsWithDefaults = defaultArguments;
 
   private defaultChromiumArgs: string[] = [
@@ -83,7 +74,6 @@ class Hackium extends EventEmitter {
 
   private launchOptions: PuppeteerLaunchOptions = {
     devtools: true,
-    defaultViewport: undefined,
     ignoreDefaultArgs: ['--enable-automation', '--disable-extensions'],
   };
 
@@ -118,20 +108,16 @@ class Hackium extends EventEmitter {
     }
 
     // TODO unknown cast will be fixed with puppeteer-extra but is another reason to move away.
-    this.puppeteer = addExtra(vanillaPuppeteer as unknown as VanillaPuppeteer);
+    // this.puppeteer = addExtra(puppeteer as unknown as VanillaPuppeteer);
 
-    this.puppeteer.use(extensionBridge({
-      newtab: `file://${path.join(findRoot(__dirname), 'pages', 'newtab', 'index.html')}`
-    }));
-
-    if (this.config.adblock) {
-      this.log.debug('using adblocker');
-      this.puppeteer.use(
-        AdblockerPlugin({
-          blockTrackers: true,
-        }),
-      );
-    }
+    // if (this.config.adblock) {
+    //   this.log.debug('using adblocker');
+    //   this.puppeteer.use(
+    //     AdblockerPlugin({
+    //       blockTrackers: true,
+    //     }),
+    //   );
+    // }
 
     // overridePuppeteerMethods({
     //   page: {
@@ -150,33 +136,12 @@ class Hackium extends EventEmitter {
   }
 
   async launch(options: LaunchOptions = {}) {
-    if (!this.puppeteer) {
-      throw new Error('Hackium initialization failed - no access to puppeteer object. Error:Puppeteer');
-    }
-    const browser = await this.puppeteer.launch(
-      Object.assign(options, this.launchOptions),
+    const browser = await puppeteer.launch(
+      mergeLaunchOptions(Object.assign(options, this.launchOptions)),
     ) as HackiumBrowser;
+    await browser.initialization();
 
-    this.browser = browser;
-
-    const [page] = await this.browser.pages();
-    this.browser.setActivePage(page);
-
-    await browser.extension.addListener('chrome.tabs.onActivated', async ({ tabId, windowId }) => {
-      const code = `window.postMessage({owner:'hackium', name:'pageActivated', data:{tabId:${tabId}, windowId:${windowId}}})`;
-      this.log.debug(`chrome.tabs.onActivated triggered. Calling ${code}`);
-      try {
-        const result = await browser.extension.send('chrome.tabs.executeScript', tabId, {
-          code,
-          matchAboutBlank: true
-        })
-      } catch (e) {
-        this.log.error('Error posting message for pageActivated');
-        this.log.error(e.message);
-      }
-    })
-
-    return this.browser;
+    return this.browser = browser;
   }
 
   async cliBehavior() {
@@ -234,9 +199,6 @@ class Hackium extends EventEmitter {
     if (this.browser) return this.browser.close();
   }
 
-  async cleanup() {
-    // resetOverriddenPuppeteerMethods();
-  }
 }
 
 export default Hackium;

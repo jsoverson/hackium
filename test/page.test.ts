@@ -42,23 +42,16 @@ describe('Page', function () {
     })
   });
 
-  it.only('Should update active page as tabs open', async () => {
-    console.log('\n\n\na\n\n\n\n');
+  it('Should update active page as tabs open', async () => {
     const [page] = await browser.pages();
-    console.log('\n\n\nb\n\n\n\n');
     await page.goto(baseUrl);
-    console.log('\n\n\nc\n\n\n\n');
+    expect(page).to.equal(browser.activePage);
     const page2 = await browser.newPage();
-    console.log('\n\n\nd\n\n\n\n');
-    await page2.goto(`${baseUrl}two.html`);
-    await page2.setCacheEnabled(false);
-    console.log('\n\n\ne\n\n\n\n');
-    const activePage = await browser.getActivePage();
-    console.log('\n\n\nf\n\n\n\n');
-    const messages = await page2.evaluate('messages') as any[];
-    expect(messages.length).to.equal(1);
-    expect(messages[0].owner).to.equal('hackium');
-    expect(page2).to.equal(activePage);
+    // waitUntil: 'networkidle2' because of a race condition where goto resolves before we get 
+    // to communicate that the active page updated. It's significant in automated scripts but not 
+    // perceptible in manual usage/repl where activePage is most used.
+    await page2.goto(`${baseUrl}two.html`, { waitUntil: 'networkidle2' });
+    expect(page2).to.equal(browser.activePage);
   });
 
   it('Should expose hackium object & version on the page', async () => {

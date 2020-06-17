@@ -2,12 +2,14 @@
 
 import path from 'path';
 import Hackium from './';
+import { HackiumBrowserEmittedEvents } from './hackium-browser';
 import { Arguments, definition } from './arguments';
 import repl from 'repl';
 
 import yargs = require('yargs');
 
 import Logger from './logger';
+import { Page } from 'puppeteer/lib/Page';
 
 const log = new Logger('hackium:cli');
 
@@ -68,6 +70,10 @@ async function main(config: Arguments) {
       replInstance.context.browser = browser;
       replInstance.context.cdp = browser.connection;
       replInstance.context.extensionBridge = browser.extension;
+      replInstance.context.page = browser.activePage;
+      browser.on(HackiumBrowserEmittedEvents.ActivePageChanged, (page: Page) => {
+        replInstance.context.page = page;
+      })
       replInstance.on('exit', () => {
         browser.close();
       });

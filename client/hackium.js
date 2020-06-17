@@ -29,9 +29,7 @@
       }
     },
     init() {
-      // TODO!!! THIS IS HALF DONE, I WAS TRYING TO GET AN ONLOAD EVENT SO HACKIUM CAN KNOW WHEN ITS BRIDGE IS LOADED
-      client.postMessage('onClientLoaded')
-      // TODOOOO
+      client.postMessage('clientLoaded')
     }
   }
 
@@ -44,8 +42,6 @@
   }
 
   window.addEventListener('message', (evt) => {
-    log(`got window message`);
-    log(evt.data)
     if (evt.data.owner !== 'hackium') return;
     const handler = window[eventHandlerName];
     if (handler && typeof handler === 'function') handler(evt.data);
@@ -53,7 +49,5 @@
 
   client.init();
 
-  // necessary?
-  // document.dispatchEvent(new Event(`${clientId}:clientloaded`));
   log(`loaded ${clientId} client`);
 }(window, '%%%clientid%%%', true));
