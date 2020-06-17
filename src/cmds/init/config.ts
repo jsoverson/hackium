@@ -5,7 +5,7 @@
 const p: (msg: string, def: any, cb: (...args: any) => any) => any = prompt;
 
 export default {
-  url: p("What URL do you want to load by default?", "about:blank", function (result: string) {
+  url: p("What URL do you want to load by default?", "<Hackium Reference Page>", function (result: string) {
     return result;
   }),
   adblock: p("Do you want to block ads?", "true", function (result: string) {

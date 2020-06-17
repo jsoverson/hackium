@@ -1,21 +1,38 @@
+import { EventEmitter } from 'events';
+import findRoot from 'find-root';
 import { promises as fsp } from 'fs';
 import { createRequire } from 'module';
 import path from 'path';
-import vanillaPuppeteer, { LaunchOptions } from 'puppeteer';
-import { addExtra, PuppeteerExtra } from 'puppeteer-extra';
+import { addExtra, PuppeteerExtra, VanillaPuppeteer } from 'puppeteer-extra';
 import AdblockerPlugin from 'puppeteer-extra-plugin-adblocker';
-import { extensionBridge, ExtensionBridge } from 'puppeteer-extra-plugin-extensionbridge';
+import { extensionBridge } from 'puppeteer-extra-plugin-extensionbridge';
+import { BrowserOptions, ChromeArgOptions, LaunchOptions } from 'puppeteer/lib/launcher/LaunchOptions';
 import vm from 'vm';
 import { Arguments, ArgumentsWithDefaults, defaultArguments } from './arguments';
-import { HackiumBrowser } from './hackium-browser';
+import { HackiumBrowser, BrowserCloseCallback } from './hackium-browser';
 import Logger from './logger';
+import vanillaPuppeteer from './puppeteer';
 import { waterfallMap } from './waterfallMap';
-import { EventEmitter } from 'events';
-import findRoot from 'find-root';
-import { overridePuppeteerMethods, resetOverriddenPuppeteerMethods } from './puppeteer-overrides';
-import { HackiumClientEvent } from './events';
+import { Browser } from 'puppeteer/lib/Browser';
+import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
+import { ChildProcess } from 'child_process';
+import { Connection } from 'puppeteer/lib/Connection';
+import { HackiumPage } from './hackium-page';
 
 export { patterns } from 'puppeteer-interceptor';
+
+declare module 'puppeteer/lib/Launcher' {
+  interface ChromeLauncher {
+    launch(options: LaunchOptions & ChromeArgOptions & BrowserOptions): Promise<HackiumBrowser>
+  }
+}
+declare module 'puppeteer-extra' {
+  interface PuppeteerExtra {
+    launch(options: LaunchOptions & ChromeArgOptions & BrowserOptions): Promise<HackiumBrowser>
+  }
+}
+
+type PuppeteerLaunchOptions = LaunchOptions & ChromeArgOptions & BrowserOptions;
 
 const ENVIRONMENT = [
   'GOOGLE_API_KEY=no',
@@ -30,20 +47,28 @@ function setEnv(env: string[] = []) {
   });
 }
 
-declare module 'puppeteer' {
-  export interface Browser {
-    connection: CDPSession;
-    extension: ExtensionBridge;
-  }
-  // extending the events that can fire from Page objects
-  export interface PageEventObj {
-    'hackiumclient:pageActivated': HackiumClientEvent;
-  }
+Browser.create = async function (connection: Connection,
+  contextIds: string[],
+  ignoreHTTPSErrors: boolean,
+  defaultViewport?: Viewport,
+  process?: ChildProcess,
+  closeCallback?: BrowserCloseCallback): Promise<HackiumBrowser> {
+  const browser = new HackiumBrowser(
+    connection,
+    contextIds,
+    ignoreHTTPSErrors,
+    defaultViewport,
+    process,
+    closeCallback
+  );
+  await connection.send('Target.setDiscoverTargets', { discover: true });
+  return browser;
 }
 
 class Hackium extends EventEmitter {
   browser?: HackiumBrowser;
   log = new Logger('hackium');
+
   private puppeteer?: PuppeteerExtra;
 
   config: ArgumentsWithDefaults = defaultArguments;
@@ -56,9 +81,9 @@ class Hackium extends EventEmitter {
     `file://${path.join(findRoot(__dirname), 'pages', 'homepage', 'index.html')}`
   ];
 
-  private launchOptions: LaunchOptions = {
+  private launchOptions: PuppeteerLaunchOptions = {
     devtools: true,
-    defaultViewport: null,
+    defaultViewport: undefined,
     ignoreDefaultArgs: ['--enable-automation', '--disable-extensions'],
   };
 
@@ -68,6 +93,13 @@ class Hackium extends EventEmitter {
     if (config) this.config = Object.assign({}, this.config, config);
     this.log.debug('Using config:');
     this.log.debug(this.config);
+
+    HackiumPage.hijackCreate({
+      interceptors: this.config.interceptor,
+      injections: this.config.inject,
+      pwd: this.config.pwd,
+      watch: this.config.watch
+    });
 
     setEnv(this.config.env);
     setEnv(ENVIRONMENT);
@@ -85,7 +117,8 @@ class Hackium extends EventEmitter {
       );
     }
 
-    this.puppeteer = addExtra(vanillaPuppeteer);
+    // TODO unknown cast will be fixed with puppeteer-extra but is another reason to move away.
+    this.puppeteer = addExtra(vanillaPuppeteer as unknown as VanillaPuppeteer);
 
     this.puppeteer.use(extensionBridge({
       newtab: `file://${path.join(findRoot(__dirname), 'pages', 'newtab', 'index.html')}`
@@ -100,14 +133,14 @@ class Hackium extends EventEmitter {
       );
     }
 
-    overridePuppeteerMethods({
-      page: {
-        injections: this.config.inject,
-        interceptors: this.config.interceptor,
-        watch: this.config.watch,
-        pwd: this.config.pwd
-      }
-    });
+    // overridePuppeteerMethods({
+    //   page: {
+    //     injections: this.config.inject,
+    //     interceptors: this.config.interceptor,
+    //     watch: this.config.watch,
+    //     pwd: this.config.pwd
+    //   }
+    // });
   }
 
   getBrowser(): HackiumBrowser {
@@ -122,13 +155,12 @@ class Hackium extends EventEmitter {
     }
     const browser = await this.puppeteer.launch(
       Object.assign(options, this.launchOptions),
-    );
+    ) as HackiumBrowser;
 
-    this.browser = await HackiumBrowser.create(browser);
+    this.browser = browser;
 
     const [page] = await this.browser.pages();
     this.browser.setActivePage(page);
-    browser.connection = await page.target().createCDPSession();
 
     await browser.extension.addListener('chrome.tabs.onActivated', async ({ tabId, windowId }) => {
       const code = `window.postMessage({owner:'hackium', name:'pageActivated', data:{tabId:${tabId}, windowId:${windowId}}})`;
@@ -203,7 +235,7 @@ class Hackium extends EventEmitter {
   }
 
   async cleanup() {
-    resetOverriddenPuppeteerMethods();
+    // resetOverriddenPuppeteerMethods();
   }
 }
 

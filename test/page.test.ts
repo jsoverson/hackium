@@ -19,9 +19,7 @@ describe('Page', function () {
 
   before((done) => {
     userDataDir = '/tmp/randomDir' + Math.random();
-
     start(port, (_) => {
-      console.log('started server');
       hackium = new Hackium();
       hackium.launch().then(b => {
         browser = b;
@@ -37,9 +35,7 @@ describe('Page', function () {
       console.log('removing userdatadir...');
       fsp.rmdir(userDataDir, { recursive: true }).then(() => {
         console.log('...removed userdatadir');
-        console.log('stopping server...');
         stop((_) => {
-          console.log('...stopped server');
           hackium.close().then(done);
         });
       });
@@ -52,13 +48,10 @@ describe('Page', function () {
     console.log('\n\n\nb\n\n\n\n');
     await page.goto(baseUrl);
     console.log('\n\n\nc\n\n\n\n');
-    await page.waitFor(4000);
-
     const page2 = await browser.newPage();
     console.log('\n\n\nd\n\n\n\n');
     await page2.goto(`${baseUrl}two.html`);
     await page2.setCacheEnabled(false);
-    await page2.waitFor(4000);
     console.log('\n\n\ne\n\n\n\n');
     const activePage = await browser.getActivePage();
     console.log('\n\n\nf\n\n\n\n');

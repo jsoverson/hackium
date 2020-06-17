@@ -27,19 +27,21 @@
   "author": "Jarrod Overson <jsoverson@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "@types/find-root": "^1.1.1",
     "chalk": "^4.0.0",
     "debug": "^4.1.1",
+    "devtools-protocol": "0.0.777489",
     "find-root": "^1.1.0",
     "import-fresh": "^3.2.1",
     "promzard": "^0.3.0",
-    "puppeteer": "^3.2.0",
+    "puppeteer": "^4.0.0",
     "puppeteer-extra": "^3.1.9",
     "puppeteer-extra-plugin-adblocker": "^2.11.3",
     "puppeteer-interceptor": "^0.1.1",
+    "supports-color": "^7.1.0",
     "yargs": "^15.3.1"
   },
   "devDependencies": {
+    "@types/find-root": "^1.1.1",
     "@types/chai": "^4.2.11",
     "@types/debug": "^4.1.5",
     "@types/mocha": "^7.0.2",

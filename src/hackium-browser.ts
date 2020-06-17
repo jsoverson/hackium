@@ -1,34 +1,61 @@
-import { Browser, Page } from 'puppeteer';
+import { ChildProcess } from 'child_process';
+import { Browser } from 'puppeteer/lib/Browser';
+import { Connection } from 'puppeteer/lib/Connection';
+import { Page } from 'puppeteer/lib/Page';
+import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
 import Logger from './logger';
-import Hackium from '.';
+import { ExtensionBridge } from 'puppeteer-extra-plugin-extensionbridge';
+import { HackiumPage } from './hackium-page';
 
 export const { Browser: PuppeteerBrowser } = require('puppeteer/lib/Browser');
 
-declare module 'puppeteer' {
-  export interface Page {
-    _id: number;
-  }
+declare module 'puppeteer/lib/Browser' {
   export interface Browser {
-    hackium: HackiumBrowser;
+    extension: ExtensionBridge;
   }
 }
 
-// This is hacky but should not be refactored until puppeteer drops with full TS support so we can extend
-// "Browser" and other classes properly
+export type BrowserCloseCallback = () => Promise<void> | void;
 
-export interface HackiumBrowser extends Browser { }
-
-export class HackiumBrowser extends PuppeteerBrowser {
+export class HackiumBrowser extends Browser {
   log: Logger = new Logger('hackium:browser');
   activePage?: Page;
+  connection: Connection;
 
-  static async create(browser: Browser): Promise<HackiumBrowser> {
-    const props = Object.getOwnPropertyDescriptors(HackiumBrowser.prototype);
-    const hackiumBrowser = Object.create(browser, props);
-    browser.hackium = hackiumBrowser;
-    hackiumBrowser.log = new Logger('hackium:browser');
-    return hackiumBrowser;
+  constructor(
+    connection: Connection,
+    contextIds: string[],
+    ignoreHTTPSErrors: boolean,
+    defaultViewport?: Viewport,
+    process?: ChildProcess,
+    closeCallback?: BrowserCloseCallback
+  ) {
+    super(connection, contextIds, ignoreHTTPSErrors, defaultViewport, process, closeCallback);
+    this.connection = connection;
   }
+
+  pages() {
+    return super.pages() as Promise<HackiumPage[]>;
+  }
+
+  newPage(): Promise<HackiumPage> {
+    return super.newPage() as Promise<HackiumPage>;
+  }
+
+  // async _createPageInContext(contextId?: string, url: string = 'about:blank'): Promise<Page> {
+  //   this.log.debug('creating new target');
+  //   const { targetId } = await this._connection.send('Target.createTarget', {
+  //     url,
+  //     browserContextId: contextId || undefined,
+  //   });
+  //   const target = await this._targets.get(targetId);
+  //   assert(
+  //     await target._initializedPromise,
+  //     'Failed to create target for page'
+  //   );
+  //   const page = await target.page();
+  //   return page;
+  // }
 
   async maximize() {
     // hacky way of maximizing. --start-maximized and windowState:maximized don't work on macs. Check later.
@@ -40,14 +67,14 @@ export class HackiumBrowser extends PuppeteerBrowser {
   }
 
   async setWindowBounds(width: number, height: number) {
-    const window = (await this.getConnection().send(
+    const window = (await this.connection.send(
       'Browser.getWindowForTarget',
       {
         // @ts-ignore
         targetId: page._targetId,
       },
     )) as { windowId: number };
-    return this.getConnection().send('Browser.setWindowBounds', {
+    return this.connection.send('Browser.setWindowBounds', {
       windowId: window.windowId,
       bounds: { top: 0, left: 0, width, height },
     });

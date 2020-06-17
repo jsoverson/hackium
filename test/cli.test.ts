@@ -12,7 +12,7 @@ const port = 5000;
 let baseUrl = `http://127.0.0.1:${port}/`;
 
 describe('CLI', function () {
-  this.timeout(60000);
+  this.timeout(6000);
   let dir = '/nonexistant';
   let baseArgs = '';
   let instance: Hackium | undefined;
@@ -21,20 +21,13 @@ describe('CLI', function () {
     dir = '/tmp/randomDir' + Math.random();
     baseArgs = `--url="${baseUrl}" --pwd="${__dirname}" --userDataDir=${dir}`;
 
-    console.log('starting server');
-    start(port, (_) => {
-      console.log('started server');
-      done();
-    });
+    start(port, done);
   });
 
   after((done) => {
     console.log('stopping server');
     fsp.rmdir(dir, { recursive: true }).then(() => {
-      stop((_) => {
-        console.log('stopped server');
-        done();
-      });
+      stop(done);
     });
   });
 
@@ -161,11 +154,11 @@ describe('CLI', function () {
       origSrc.replace('interceptedValue', 'interceptedValHotload'),
       'utf8',
     );
+    const newPage = await instance.getBrowser().newPage();
     await page.close();
-    page = await instance.getBrowser().newPage();
-    await page.goto(baseUrl);
+    await newPage.goto(baseUrl);
 
-    value = await page.evaluate('window.interceptedVal');
+    value = await newPage.evaluate('window.interceptedVal');
     expect(value).to.equal('interceptedValHotload');
 
     await fsp.unlink(tempPath);

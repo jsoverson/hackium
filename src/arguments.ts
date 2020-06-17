@@ -23,7 +23,7 @@ export class ArgumentsWithDefaults extends Arguments {
   env: string[] = [];
   config = '';
   inject: string[] = [];
-  interceptor: string[] = [''];
+  interceptor: string[] = [];
   pwd = process.cwd();
   headless = false;
   userDataDir = path.join(

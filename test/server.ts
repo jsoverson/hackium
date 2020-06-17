@@ -9,8 +9,16 @@ const server = createServer((request: any, response: any) => {
 });
 
 export function start(port: number, cb: (...args: any[]) => any) {
-  server.listen(port, cb);
+  console.log('starting server');
+  server.listen(port, (...args: any[]) => {
+    console.log('started server');
+    cb(...args);
+  });
 }
 export function stop(cb: (...args: any[]) => any) {
-  server.close(cb);
+  console.log('stopped server');
+  server.close((...args: any[]) => {
+    console.log('stopped server');
+    cb(...args);
+  });
 }

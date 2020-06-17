@@ -1,5 +1,8 @@
 {
   "mochaExplorer.files": "test/**/*.ts",
   "mochaExplorer.require": "ts-node/register",
-  "mochaExplorer.debuggerConfig": "Debug Mocha Tests"
+  "mochaExplorer.debuggerConfig": "Debug Mocha Tests",
+  "mochaExplorer.env": {
+    "DEBUG": "hackium*"
+  }
 }
