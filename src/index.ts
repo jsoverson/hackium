@@ -1,21 +1,22 @@
 import { EventEmitter } from 'events';
 import findRoot from 'find-root';
-import { promises as fsp } from 'fs';
+import fs from 'fs';
+import { promisify } from 'util';
 import { createRequire } from 'module';
 import path from 'path';
 import { mergeLaunchOptions } from 'puppeteer-extensionbridge';
 import { BrowserOptions, ChromeArgOptions, LaunchOptions } from 'puppeteer/lib/launcher/LaunchOptions';
 import vm from 'vm';
 import { Arguments, ArgumentsWithDefaults, defaultArguments } from './arguments';
-import { HackiumBrowser, BrowserCloseCallback } from './hackium-browser';
-import Logger from './logger';
+import { HackiumBrowser, BrowserCloseCallback } from './hackium/hackium-browser';
+import Logger from './util/logger';
 import puppeteer from './puppeteer';
-import { waterfallMap } from './waterfallMap';
+import { waterfallMap } from './util/waterfall';
 import { Browser } from 'puppeteer/lib/Browser';
 import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
 import { ChildProcess } from 'child_process';
 import { Connection } from 'puppeteer/lib/Connection';
-import { HackiumPage } from './hackium-page';
+import { HackiumPage } from './hackium/hackium-page';
 
 export { patterns } from 'puppeteer-interceptor';
 
@@ -91,6 +92,10 @@ class Hackium extends EventEmitter {
       watch: this.config.watch
     });
 
+    if ('devtools' in this.config) {
+      this.launchOptions.devtools = this.config.devtools;
+    }
+
     setEnv(this.config.env);
     setEnv(ENVIRONMENT);
 
@@ -139,7 +144,7 @@ class Hackium extends EventEmitter {
     const browser = await puppeteer.launch(
       mergeLaunchOptions(Object.assign(options, this.launchOptions)),
     ) as HackiumBrowser;
-    await browser.initialization();
+    await browser.onInitialization();
 
     return this.browser = browser;
   }
@@ -159,7 +164,7 @@ class Hackium extends EventEmitter {
 
   async runScript(file: string, args: any[] = [], src?: string) {
     if (!src) {
-      src = await fsp.readFile(file, 'utf-8');
+      src = await promisify(fs.readFile)(file, 'utf-8');
     }
 
     const browser = await this.getBrowser();

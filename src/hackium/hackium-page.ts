@@ -2,22 +2,25 @@
 import DEBUG, { Debugger } from 'debug';
 import Protocol from 'devtools-protocol';
 import findRoot from 'find-root';
-import { promises as fs } from 'fs';
+import fs from 'fs';
+import { promisify } from 'util';
 import importFresh from 'import-fresh';
 import path from 'path';
 import { intercept, Interceptor } from 'puppeteer-interceptor';
 import { Page } from 'puppeteer/lib/Page';
-import { HackiumClientEvent } from './events';
+import { HackiumClientEvent } from '../events';
 import { HackiumBrowser } from './hackium-browser';
 import { HackiumBrowserContext } from './hackium-browser-context';
-import Logger from './logger';
-import { strings } from './strings';
+import Logger from '../util/logger';
+import { strings } from '../strings';
 import { PuppeteerLifeCycleEvent } from 'puppeteer/lib/LifecycleWatcher';
 import { CDPSession } from 'puppeteer/lib/Connection';
 import { Target } from 'puppeteer/lib/Target';
 import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
 import { HTTPResponse } from 'puppeteer/lib/HTTPResponse';
-import { waterfallMap } from './waterfallMap';
+import { waterfallMap } from '../util/waterfall';
+import { HackiumMouse, HackiumKeyboard } from './hackium-input';
+import { Keyboard } from 'puppeteer/lib/Input';
 
 const metadata = require(path.join(findRoot(__dirname), 'package.json'));
 
@@ -56,6 +59,8 @@ export class HackiumPage extends Page {
     watch: false,
     pwd: process.env.PWD || '/tmp'
   }
+  _hmouse: HackiumMouse;
+  _hkeyboard: HackiumKeyboard;
   private interceptorModules: Interceptor[] = [];
   private cachedInjections: string[] = [];
   private defaultInjections = [
@@ -64,6 +69,8 @@ export class HackiumPage extends Page {
 
   constructor(client: CDPSession, target: Target, ignoreHTTPSErrors: boolean) {
     super(client, target, ignoreHTTPSErrors);
+    this._hkeyboard = new HackiumKeyboard(client);
+    this._hmouse = new HackiumMouse(client, this._hkeyboard);
   }
 
   static hijackCreate = function (config: PageInstrumentationConfig) {
@@ -119,6 +126,14 @@ export class HackiumPage extends Page {
     options?: WaitForOptions & { referer?: string }
   ): Promise<HTTPResponse> {
     return super.goto(url, options || {});
+  }
+
+  get mouse(): HackiumMouse {
+    return this._hmouse;
+  }
+
+  get keyboard(): HackiumKeyboard {
+    return this._hkeyboard;
   }
 
   private async instrumentSelf(config: PageInstrumentationConfig = this.instrumentationConfig) {
@@ -199,7 +214,7 @@ export class HackiumPage extends Page {
       files.map((f) => {
         const location = f.startsWith(path.sep) ? f : path.join(this.instrumentationConfig.pwd, f);
         this.log.debug(`reading ${location} (originally ${f})`);
-        return fs.readFile(location, 'utf-8')
+        return promisify(fs.readFile)(location, 'utf-8')
           .then(src =>
             src
               .replace('%%%HACKIUM_VERSION%%%', metadata.version)

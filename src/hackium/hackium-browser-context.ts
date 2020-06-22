@@ -1,6 +1,6 @@
 
 import { BrowserContext } from 'puppeteer/lib/Browser';
-import Logger from './logger';
+import Logger from '../util/logger';
 import { HackiumBrowser } from './hackium-browser';
 
 export class HackiumBrowserContext extends BrowserContext {

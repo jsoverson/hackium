@@ -1,87 +1,96 @@
-#!/usr/bin/env node --experimental-repl-await
-
 import path from 'path';
 import Hackium from './';
-import { HackiumBrowserEmittedEvents } from './hackium-browser';
+import { HackiumBrowserEmittedEvents } from './hackium/hackium-browser';
 import { Arguments, definition } from './arguments';
+import { promisify } from 'util';
 import repl from 'repl';
 
 import yargs = require('yargs');
 
-import Logger from './logger';
+import Logger from './util/logger';
 import { Page } from 'puppeteer/lib/Page';
 
 const log = new Logger('hackium:cli');
 
 const DEFAULT_CONFIG_NAMES = ['hackium.json', 'hackium.config.js'];
 
-const argParser = yargs
-  .commandDir('cmds')
-  .command('$0', 'start hackium', (yargs) => {
-    yargs
-      .options(definition)
-      .option('config', {
-        alias: 'c',
-        default: '',
-        type: 'string',
-      })
-  }, (argv) => {
-    main(argv);
-  })
-  .help();
+export default function runCli() {
+  const argParser = yargs
+    .commandDir('cmds')
+    .command('$0', 'start hackium', (yargs) => {
+      yargs
+        .options(definition)
+        .option('config', {
+          alias: 'c',
+          default: '',
+          type: 'string',
+        })
+    }, (argv) => {
+      main(argv);
+    })
+    .help();
 
-const args = argParser.argv;
+  const args = argParser.argv;
 
-async function main(config: Arguments) {
-  const configFilesToCheck = [...DEFAULT_CONFIG_NAMES];
+  async function main(config: Arguments) {
+    const configFilesToCheck = [...DEFAULT_CONFIG_NAMES];
 
-  if (config.config) configFilesToCheck.unshift(config.config);
+    if (config.config) configFilesToCheck.unshift(config.config);
 
-  for (let i = 0; i < configFilesToCheck.length; i++) {
-    const fileName = configFilesToCheck[i];
-    const location = path.join(process.env.PWD || '', fileName);
-    try {
-      config = await import(location);
-      log.info(`Using config found at ${location}`);
-      config.pwd = path.dirname(location);
-      log.debug(`setting pwd to config dir: ${path.dirname(location)}`);
-      break;
-    } catch {
-      log.debug(`No config found at ${location}`);
+    for (let i = 0; i < configFilesToCheck.length; i++) {
+      const fileName = configFilesToCheck[i];
+      const location = path.join(process.env.PWD || '', fileName);
+      try {
+        config = await import(location);
+        log.info(`Using config found at ${location}`);
+        config.pwd = path.dirname(location);
+        log.debug(`setting pwd to config dir: ${path.dirname(location)}`);
+        break;
+      } catch {
+        log.debug(`No config found at ${location}`);
+      }
     }
-  }
 
-  const hackium = new Hackium(config);
+    const hackium = new Hackium(config);
 
-  hackium
-    .cliBehavior()
-    .then(() => {
-      log.info('Hackium launched');
-    })
-    .catch((e) => {
-      log.error('Hackium failed during bootup and may be in an unstable state.');
-      log.error(e);
-    })
-    .finally(async () => {
-      const browser = await hackium.getBrowser();
-
-      const replInstance = repl.start('> ');
-      replInstance.context.hackium = hackium;
-      replInstance.context.browser = browser;
-      replInstance.context.cdp = browser.connection;
-      replInstance.context.extensionBridge = browser.extension;
-      replInstance.context.page = browser.activePage;
-      browser.on(HackiumBrowserEmittedEvents.ActivePageChanged, (page: Page) => {
-        replInstance.context.page = page;
+    hackium
+      .cliBehavior()
+      .then(() => {
+        log.info('Hackium launched');
       })
-      replInstance.on('exit', () => {
-        browser.close();
+      .catch((e) => {
+        log.error('Hackium failed during bootup and may be in an unstable state.');
+        log.error(e);
+      })
+      .finally(async () => {
+        const browser = await hackium.getBrowser();
+
+        const replInstance = repl.start('> ');
+        if (config.pwd) {
+          const setupHistory = promisify(replInstance.setupHistory.bind(replInstance));
+          await setupHistory(path.join(config.pwd, '.repl_history'));
+        } else {
+          log.debug('pwd not set, repl history can not be saved');
+        }
+
+        replInstance.context.hackium = hackium;
+        replInstance.context.browser = browser;
+        replInstance.context.cdp = browser.connection;
+        replInstance.context.extensionBridge = browser.extension;
+        replInstance.context.page = browser.activePage;
+        browser.on(HackiumBrowserEmittedEvents.ActivePageChanged, (page: Page) => {
+          replInstance.context.page = page;
+        })
+        replInstance.on('exit', () => {
+          browser.close();
+        });
+        hackium.getBrowser().on('disconnected', () => {
+          replInstance.close();
+        });
+      })
+      .catch((err) => {
+        log.error(err);
       });
-      hackium.getBrowser().on('disconnected', () => {
-        replInstance.close();
-      });
-    })
-    .catch((err) => {
-      log.error(err);
-    });
+  }
 }
+

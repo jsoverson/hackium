@@ -1,5 +1,5 @@
 import { assert } from "console";
-import { SafeMap } from "./SafeMap";
+import { SafeMap } from "./util/SafeMap";
 
 export const strings = new SafeMap([
   ["clientid", "hackium"],

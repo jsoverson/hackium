@@ -12,7 +12,7 @@ const port = 5000;
 let baseUrl = `http://127.0.0.1:${port}/`;
 
 describe('CLI', function () {
-  this.timeout(6000);
+  this.timeout(600000);
   let dir = '/nonexistant';
   let baseArgs = '';
   let instance: Hackium | undefined;
@@ -162,7 +162,7 @@ describe('CLI', function () {
     await fsp.unlink(tempPath);
   });
 
-  it('Should run hackium scripts', async () => {
+  it.only('Should run hackium scripts', async () => {
     const scriptPath = path.join(__dirname, 'fixtures', 'script.js');
 
     instance = new Hackium(

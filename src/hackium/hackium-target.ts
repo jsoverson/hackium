@@ -5,10 +5,10 @@ import Protocol from 'puppeteer/lib/protocol';
 import { CDPSession } from 'puppeteer/lib/Connection';
 import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
 import { HackiumPage } from './hackium-page';
-import Hackium from '.';
-import Logger from './logger';
+import Hackium from '..';
+import Logger from '../util/logger';
 import { EventEmitter } from 'puppeteer/lib/EventEmitter';
-import { mixin } from './mixin';
+import { mixin } from '../util/mixin';
 
 export interface HackiumTarget extends Target, EventEmitter { }
 

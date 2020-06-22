@@ -12,7 +12,7 @@ import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
 import { Target } from 'puppeteer/lib/Target';
 import { HackiumPage } from './hackium-page';
 import { HackiumTarget, TargetEmittedEvents } from './hackium-target';
-import Logger from './logger';
+import Logger from '../util/logger';
 
 const newTabTimeout = 500;
 
@@ -74,10 +74,9 @@ export class HackiumBrowser extends Browser {
     })();
   }
 
-  initialization() {
+  onInitialization() {
     return this._initializationPromise;
   }
-
 
   pages() {
     return super.pages() as Promise<HackiumPage[]>;
@@ -145,21 +144,6 @@ export class HackiumBrowser extends Browser {
       context.emit(Events.BrowserContext.TargetCreated, target);
     }
   }
-
-  // async _createPageInContext(contextId?: string, url: string = 'about:blank'): Promise<Page> {
-  //   this.log.debug('creating new target');
-  //   const { targetId } = await this._connection.send('Target.createTarget', {
-  //     url,
-  //     browserContextId: contextId || undefined,
-  //   });
-  //   const target = await this._targets.get(targetId);
-  //   assert(
-  //     await target._initializedPromise,
-  //     'Failed to create target for page'
-  //   );
-  //   const page = await target.page();
-  //   return page;
-  // }
 
   async maximize() {
     // hacky way of maximizing. --start-maximized and windowState:maximized don't work on macs. Check later.

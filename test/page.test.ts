@@ -4,7 +4,7 @@ import fs from 'fs';
 import { start, stop } from './server';
 
 import Hackium from '../src';
-import { HackiumBrowser } from '../src/hackium-browser';
+import { HackiumBrowser } from '../src/hackium/hackium-browser';
 
 const fsp = fs.promises;
 
