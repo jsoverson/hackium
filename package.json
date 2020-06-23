@@ -37,7 +37,8 @@
     "import-fresh": "^3.2.1",
     "promzard": "^0.3.0",
     "puppeteer": "^4.0.0",
-    "puppeteer-interceptor": "^0.1.1",
+    "puppeteer-extensionbridge": "^0.1.1",
+    "puppeteer-interceptor": "^1.0.0",
     "seedrandom": "^3.0.5",
     "supports-color": "^7.1.0",
     "yargs": "^15.3.1"
