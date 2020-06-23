@@ -17,7 +17,7 @@
     "test": "mocha"
   },
   "bin": {
-    "hackium": "./dist/src/cli.js"
+    "hackium": "./bin/hackium"
   },
   "directories": {
     "dist": "./dist",
