@@ -1,16 +1,17 @@
+import origFs from 'fs';
 import path from 'path';
-import Hackium from './';
-import { HackiumBrowserEmittedEvents } from './hackium/hackium-browser';
-import { Arguments, definition } from './arguments';
-import { promisify } from 'util';
+import { Page } from 'puppeteer/lib/Page';
 import repl from 'repl';
+import { promisify } from 'util';
+import Hackium from './';
+import { Arguments, definition } from './arguments';
+import { HackiumBrowserEmittedEvents } from './hackium/hackium-browser';
+import Logger from './util/logger';
 
 import yargs = require('yargs');
 
-import Logger from './util/logger';
-import { Page } from 'puppeteer/lib/Page';
-
 const log = new Logger('hackium:cli');
+const exists = promisify(origFs.exists);
 
 const DEFAULT_CONFIG_NAMES = ['hackium.json', 'hackium.config.js'];
 
@@ -40,14 +41,19 @@ export default function runCli() {
     for (let i = 0; i < configFilesToCheck.length; i++) {
       const fileName = configFilesToCheck[i];
       const location = path.join(process.env.PWD || '', fileName);
+      if (!await exists(location)) {
+        log.debug(`no config found at ${location}`);
+        continue;
+      }
       try {
-        config = await import(location);
-        log.info(`Using config found at ${location}`);
+        config = require(location);
+        log.info(`using config found at ${location}`);
         config.pwd = path.dirname(location);
         log.debug(`setting pwd to config dir: ${path.dirname(location)}`);
         break;
-      } catch {
-        log.debug(`No config found at ${location}`);
+      } catch (e) {
+        log.error(`error importing configuration:`);
+        console.log(e);
       }
     }
 

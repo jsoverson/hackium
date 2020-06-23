@@ -1,5 +1,7 @@
 import path from 'path';
 
+export const defaultSignal = '<default>'
+
 export class Arguments {
   url?: string;
   adblock?: boolean;

@@ -62,6 +62,7 @@ Browser.create = async function (connection: Connection,
 class Hackium extends EventEmitter {
   browser?: HackiumBrowser;
   log = new Logger('hackium');
+  version = require(path.join(findRoot(__dirname), 'package.json')).version;
 
   config: ArgumentsWithDefaults = defaultArguments;
 

@@ -1,27 +1,58 @@
 
+import inquirer from 'inquirer';
+import { defaultSignal } from '../../arguments';
+import { writeTemplate } from './util';
 
-// "prompt" is magically available from promzard but collides with DOM's prompt()
-//@ts-ignore
-const p: (msg: string, def: any, cb: (...args: any) => any) => any = prompt;
 
-export default {
-  url: p("What URL do you want to load by default?", "<Hackium Reference Page>", function (result: string) {
-    return result;
-  }),
-  adblock: p("Do you want to block ads?", "true", function (result: string) {
-    return result === "true";
-  }),
-  devtools: p("Do you want to open devtools automatically?", "true", function (result: string) {
-    return result === "true";
-  }),
-  // intercept: p("Do you want to intercept and modify any scripts?", "yes", function (result: string) {
-  //   return result === 'yes' ? 
-  //   return result;
-  // }),
-  headless: p("Do you want to run headless?", "false", function (result: string) {
-    return result === 'true';
-  }),
-  execute: p("Do you want to execute any hackium scripts by default?", "no", function (result: string) {
-    return [];
-  })
+export default async function initialize() {
+  return inquirer
+    .prompt([
+      {
+        name: 'url',
+        message: "What URL do you want to load by default?",
+        default: defaultSignal,
+      },
+      {
+        name: 'adblock',
+        message: "Do you want to block ads?",
+        default: true,
+        type: 'confirm'
+      },
+      {
+        name: 'devtools',
+        message: 'Do you want to open devtools automatically?',
+        default: true,
+        type: 'confirm'
+      },
+      {
+        name: 'inject',
+        message: 'Do you want to create a blank JavaScript injection?',
+        default: false,
+        type: 'confirm'
+      },
+      {
+        name: 'interceptor',
+        message: 'Do you want to add a boilerplate interceptor?',
+        default: false,
+        type: 'confirm'
+      },
+      {
+        name: 'headless',
+        message: 'Do you want to run headless?',
+        default: false,
+        type: 'confirm'
+      }
+    ])
+    .then(async answers => {
+      if (answers.inject) answers.inject = [await writeTemplate('inject.js')];
+      else delete answers.inject;
+      if (answers.interceptor) answers.interceptor = [await writeTemplate('interceptor.js')];
+      else delete answers.interceptor;
+
+      return answers;
+    })
+    .catch(error => {
+      console.log("Init error");
+      console.log(error);
+    });
 };
