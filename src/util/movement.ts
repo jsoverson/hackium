@@ -1,6 +1,5 @@
 
 import * as d3 from 'd3-ease';
-import Bezier from 'bezier-js';
 import { Random } from './random';
 
 export const stepFunctions = {

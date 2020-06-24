@@ -1,7 +1,7 @@
 
-const { parseScript } = require('shift-ast');
-import codegen from 'shift-printer';
+const { parseScript } = require('shift-parser');
+import { prettyPrint } from 'shift-printer';
 
 export function prettify(src: string) {
-  return codegen.print(parseScript(src));
+  return prettyPrint(parseScript(src));
 }
