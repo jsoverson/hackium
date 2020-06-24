@@ -11,7 +11,7 @@ import { Arguments, ArgumentsWithDefaults, defaultArguments } from './arguments'
 import { HackiumBrowser, BrowserCloseCallback } from './hackium/hackium-browser';
 import Logger from './util/logger';
 import puppeteer from './puppeteer';
-import { waterfallMap } from './util/waterfall';
+import { waterfallMap } from './util/promises';
 import { Browser } from 'puppeteer/lib/Browser';
 import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
 import { ChildProcess } from 'child_process';

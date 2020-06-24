@@ -2,27 +2,26 @@
 import DEBUG, { Debugger } from 'debug';
 import Protocol from 'devtools-protocol';
 import findRoot from 'find-root';
-import fs from 'fs';
-import { promisify } from 'util';
+import { promises as fs } from 'fs';
 import importFresh from 'import-fresh';
 import path from 'path';
 import { intercept, Interceptor } from 'puppeteer-interceptor';
+import { CDPSession } from 'puppeteer/lib/Connection';
+import { HTTPResponse } from 'puppeteer/lib/HTTPResponse';
+import { PuppeteerLifeCycleEvent } from 'puppeteer/lib/LifecycleWatcher';
 import { Page } from 'puppeteer/lib/Page';
+import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
+import { Target } from 'puppeteer/lib/Target';
+import { promisify } from 'util';
 import { HackiumClientEvent } from '../events';
+import Logger from '../util/logger';
+import { waterfallMap, onlySettled } from '../util/promises';
 import { HackiumBrowser } from './hackium-browser';
 import { HackiumBrowserContext } from './hackium-browser-context';
-import Logger from '../util/logger';
+import { HackiumKeyboard, HackiumMouse } from './hackium-input';
 import { strings } from '../strings';
-import { PuppeteerLifeCycleEvent } from 'puppeteer/lib/LifecycleWatcher';
-import { CDPSession } from 'puppeteer/lib/Connection';
-import { Target } from 'puppeteer/lib/Target';
-import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
-import { HTTPResponse } from 'puppeteer/lib/HTTPResponse';
-import { waterfallMap } from '../util/waterfall';
-import { HackiumMouse, HackiumKeyboard } from './hackium-input';
-import { Keyboard } from 'puppeteer/lib/Input';
+import { renderTemplate } from '../util/template';
 
-const metadata = require(path.join(findRoot(__dirname), 'package.json'));
 
 interface WaitForOptions {
   timeout?: number;
@@ -61,7 +60,7 @@ export class HackiumPage extends Page {
   }
   _hmouse: HackiumMouse;
   _hkeyboard: HackiumKeyboard;
-  private interceptorModules: Interceptor[] = [];
+  private cachedInterceptors: Interceptor[] = [];
   private cachedInjections: string[] = [];
   private defaultInjections = [
     path.join(findRoot(__dirname), 'client', 'hackium.js')
@@ -93,7 +92,7 @@ export class HackiumPage extends Page {
   private async __initialize(config: PageInstrumentationConfig) {
     //@ts-ignore I hate private methods.
     await super._initialize();
-    if (this.interceptorModules.length === 0) this.loadInterceptors();
+    if (this.cachedInterceptors.length === 0) this.loadInterceptors();
     await this.instrumentSelf(config);
   }
 
@@ -159,7 +158,7 @@ export class HackiumPage extends Page {
     })
 
     if (this.instrumentationConfig.injections) {
-      await this.cacheInjections();
+      await this.loadInjections();
     }
 
     this.log.debug(`adding ${this.cachedInjections.length} scripts to evaluate on every load`);
@@ -167,32 +166,33 @@ export class HackiumPage extends Page {
       await this.evaluateNowAndOnNewDocument(this.cachedInjections[i]);
     }
 
-    const browser = this.browserContext().browser();
+    this.registerInterceptionRequests(this.cachedInterceptors);
+  }
 
-    this.interceptorModules.forEach((interceptor) => {
+  private registerInterceptionRequests(interceptors: Interceptor[]) {
+    const browser = this.browserContext().browser();
+    interceptors.forEach((interceptor) => {
       this.log.debug(`Registering interceptor for pattern '${interceptor.intercept}'`);
       intercept(this, interceptor.intercept, {
         onResponseReceived: (evt: Interceptor.OnResponseReceivedEvent) => {
           this.log.debug(`Intercepted response for URL ${evt.request.url}`);
-          if (this.instrumentationConfig.watch) this.loadInterceptors();
+          // if (this.instrumentationConfig.watch) this.loadInterceptors();
           let response = evt.response;
-          this.interceptorModules.forEach((interceptor) => {
-            if (response) evt.response = response;
-            response = interceptor.interceptor(browser, evt, DEBUG('hackium:interceptor'));
-          });
-          return response;
+          if (response) evt.response = response;
+          return interceptor.interceptor(browser, evt, DEBUG('hackium:interceptor'));
         },
       });
     });
   }
 
   private loadInterceptors() {
+    this.cachedInterceptors = [];
     this.log.debug(`loading ${this.instrumentationConfig.interceptors.length} interceptor modules`)
     this.instrumentationConfig.interceptors.forEach((modulePath) => {
       try {
         const interceptorPath = path.join(this.instrumentationConfig.pwd, modulePath);
         this.log.debug(`Reading interceptor module from ${interceptorPath}`)
-        this.interceptorModules.push(
+        this.cachedInterceptors.push(
           importFresh(interceptorPath) as Interceptor,
         );
       } catch (e) {
@@ -201,39 +201,25 @@ export class HackiumPage extends Page {
     });
   }
 
-  async reloadInjections() {
-    this.cachedInjections = [];
-    this.cacheInjections();
-  }
-
-  private async cacheInjections(files = this.instrumentationConfig.injections) {
+  private async loadInjections() {
     this.log.debug(`reading files to inject on new document`);
-    files = files.concat(this.defaultInjections);
-    if (!files) return [];
-    const readFiles = await Promise.allSettled(
+    this.cachedInjections = [];
+    const files = this.instrumentationConfig.injections.concat(this.defaultInjections);
+    const injections = await onlySettled(
       files.map((f) => {
         const location = f.startsWith(path.sep) ? f : path.join(this.instrumentationConfig.pwd, f);
         this.log.debug(`reading ${location} (originally ${f})`);
-        return promisify(fs.readFile)(location, 'utf-8')
-          .then(src =>
-            src
-              .replace('%%%HACKIUM_VERSION%%%', metadata.version)
-              .replace(/%%%(.+?)%%%/g, (m, $1) => {
-                return strings.get($1)
-              })
-          )
-          .catch((e) => {
-            this.log.warn(`couldn't read ${location}: ${e.message}`);
-          });
+        return fs.readFile(location, 'utf-8').then(renderTemplate)
       }),
     );
-    const injections = readFiles
-      .filter((p) => p.status === 'fulfilled')
-      .map((p) => (p as PromiseFulfilledResult<string>).value);
     this.log.debug(`read ${injections.length} files`);
     this.cachedInjections = injections;
     return injections;
   }
 
-}
+  addInterceptor(interceptor: Interceptor) {
+    this.cachedInterceptors.push(interceptor);
+    this.registerInterceptionRequests([interceptor]);
+  }
 
+}

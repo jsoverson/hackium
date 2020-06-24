@@ -92,7 +92,7 @@ describe('CLI', function () {
     expect(instance.config.pwd).equal(process.cwd());
   });
 
-  it('Should watch for and apply changes on a reload', async () => {
+  xit('Should watch for and apply changes on a reload', async () => {
     const origPath = path.join(__dirname, 'fixtures', 'interceptor.js');
     const tempPath = path.join(__dirname, 'fixtures', 'interceptorTemp.js');
     const origSrc = await fsp.readFile(origPath, 'utf8');
@@ -162,7 +162,7 @@ describe('CLI', function () {
     await fsp.unlink(tempPath);
   });
 
-  it.only('Should run hackium scripts', async () => {
+  it('Should run hackium scripts', async () => {
     const scriptPath = path.join(__dirname, 'fixtures', 'script.js');
 
     instance = new Hackium(

@@ -1,7 +1,7 @@
 
 import Logger from '../util/logger';
 import { Mouse, Keyboard } from 'puppeteer/lib/Input';
-import { waterfallMap } from '../util/waterfall';
+import { waterfallMap } from '../util/promises';
 import { getPointsBetween } from '../util/movement';
 
 export interface Point {

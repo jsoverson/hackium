@@ -16,6 +16,7 @@ export class Arguments {
   watch?: boolean;
   execute?: string[];
   chromeOutput?: boolean;
+  // userAgent?: string;
   _?: any[];
 }
 
@@ -37,6 +38,7 @@ export class ArgumentsWithDefaults extends Arguments {
   watch = false;
   execute: string[] = [];
   chromeOutput = false;
+  // userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.0 Safari/537.36';
   _: string[] = [];
 }
 

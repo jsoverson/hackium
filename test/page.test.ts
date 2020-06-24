@@ -1,10 +1,11 @@
 import { expect } from 'chai';
+import { Debugger } from 'debug';
 import fs from 'fs';
-
-import { start, stop } from './server';
-
+import { Interceptor } from 'puppeteer-interceptor';
+import Protocol from 'puppeteer/lib/protocol';
 import Hackium from '../src';
 import { HackiumBrowser } from '../src/hackium/hackium-browser';
+import { start, stop } from './server';
 
 const fsp = fs.promises;
 
@@ -59,6 +60,28 @@ describe('Page', function () {
     await page.goto(baseUrl);
     const version = await page.evaluate('hackium.version');
     expect(version).to.equal(require('../package.json').version);
+  });
+
+  it('Should allow configurable interception', async () => {
+    const [page] = await browser.pages();
+    let runs = 0;
+    page.addInterceptor({
+      intercept: [{
+        urlPattern: '*console*',
+        resourceType: 'Script',
+        requestStage: 'Response'
+      }],
+      interceptor: function (browser: HackiumBrowser, interception: { request: Protocol.Network.Request, response: Interceptor.InterceptedResponse }, debug: Debugger) {
+        runs++;
+        if (!interception.response.body) throw new Error('no body');
+        interception.response.body = 'var myNewValue = 12;'
+        return interception.response;
+      }
+    });
+    await page.goto(baseUrl);
+    const value = await page.evaluate('myNewValue');
+    expect(runs).to.equal(1);
+    expect(value).to.equal(12);
   });
 
 });

@@ -18,16 +18,9 @@ export function waterfallMap<T, J>(
   );
 }
 
-// export function waterfall<T>(promises: Promise<T>[]): Promise<T[]> {
-
-//   const reducer = (
-//     accumulator: Promise<T[]>,
-//     next: Promise<T>,
-//     i: number,
-//   ): Promise<T[]> => accumulator.then(list => next.then(val => list.concat(val)));
-
-//   return promises.reduce(
-//     reducer,
-//     Promise.resolve([]),
-//   );
-// }
+export function onlySettled<T>(promises: Promise<T>[]): Promise<T[]> {
+  return Promise.allSettled(promises)
+    .then(results => results
+      .filter(<(K: PromiseSettledResult<T>) => K is PromiseFulfilledResult<T>>(result => result.status === 'fulfilled'))
+      .map((result: PromiseFulfilledResult<T>) => result.value))
+}

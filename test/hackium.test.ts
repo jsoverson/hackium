@@ -12,7 +12,7 @@ const fsp = fs.promises;
 const port = 5000;
 let baseUrl = `http://127.0.0.1:${port}/`;
 
-describe.only('Page', function () {
+describe('Hackium', function () {
   this.timeout(60000);
   let userDataDir = '/nonexistant';
 
