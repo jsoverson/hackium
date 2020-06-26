@@ -204,7 +204,7 @@ export class HackiumPage extends Page {
   private async loadInjections() {
     this.log.debug(`reading files to inject on new document`);
     this.cachedInjections = [];
-    const files = this.instrumentationConfig.injections.concat(this.defaultInjections);
+    const files = this.defaultInjections.concat(this.instrumentationConfig.injections);
     const injections = await onlySettled(
       files.map((f) => {
         const location = f.startsWith(path.sep) ? f : path.join(this.instrumentationConfig.pwd, f);

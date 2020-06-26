@@ -6,6 +6,7 @@ import Protocol from 'puppeteer/lib/protocol';
 import Hackium from '../src';
 import { HackiumBrowser } from '../src/hackium/hackium-browser';
 import { start, stop } from './server';
+import path from 'path';
 
 const fsp = fs.promises;
 
@@ -13,19 +14,15 @@ const port = 5000;
 let baseUrl = `http://127.0.0.1:${port}/`;
 
 describe('Page', function () {
-  this.timeout(60000);
+  this.timeout(6000);
   let userDataDir = '/nonexistant';
   let hackium: Hackium;
-  let browser: HackiumBrowser;
 
   before((done) => {
     userDataDir = '/tmp/randomDir' + Math.random();
     start(port, (_) => {
       hackium = new Hackium();
-      hackium.launch().then(b => {
-        browser = b;
-        done();
-      })
+      done();
     });
   });
 
@@ -44,6 +41,7 @@ describe('Page', function () {
   });
 
   it('Should update active page as tabs open', async () => {
+    const browser = await hackium.launch();
     const [page] = await browser.pages();
     await page.goto(baseUrl);
     expect(page).to.equal(browser.activePage);
@@ -56,13 +54,26 @@ describe('Page', function () {
   });
 
   it('Should expose hackium object & version on the page', async () => {
+    const browser = await hackium.launch();
     const [page] = await browser.pages();
     await page.goto(baseUrl);
     const version = await page.evaluate('hackium.version');
     expect(version).to.equal(require('../package.json').version);
   });
 
+  it.only('Should always inject new scripts after hackium client', async () => {
+    hackium = new Hackium({
+      inject: [path.join(__dirname, 'fixtures', 'injection.js')]
+    });
+    const browser = await hackium.launch();
+    const [page] = await browser.pages();
+    await page.goto(baseUrl);
+    const bool = await page.evaluate('hackiumExists');
+    expect(bool).to.be.true;
+  });
+
   it('Should allow configurable interception', async () => {
+    const browser = await hackium.launch();
     const [page] = await browser.pages();
     let runs = 0;
     page.addInterceptor({
