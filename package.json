@@ -5,11 +5,10 @@
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "scripts": {
-    "build": "tsc --declaration",
-    "compile": "npm run build",
+    "compile": "tsc --declaration",
     "clean": "rm -rf dist",
     "copyfiles": "copyfiles src/**/*.js dist",
-    "prebuild": "npm run clean && mkdir dist && npm run copyfiles",
+    "precompile": "npm run clean && mkdir dist && npm run copyfiles",
     "prewatch": "npm run prebuild",
     "prepublishOnly": "npm run compile",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
@@ -44,14 +43,15 @@
     "yargs": "^15.3.1"
   },
   "devDependencies": {
-    "@types/inquirer": "^6.5.0",
-    "@types/seedrandom": "^2.4.28",
+    "@jsoverson/test-server": "^1.1.1",
     "@types/chai": "^4.2.11",
     "@types/d3-ease": "^1.0.9",
     "@types/debug": "^4.1.5",
     "@types/find-root": "^1.1.1",
+    "@types/inquirer": "^6.5.0",
     "@types/mocha": "^7.0.2",
     "@types/node": "^13.13.2",
+    "@types/seedrandom": "^2.4.28",
     "@types/serve-handler": "^6.1.0",
     "@types/tween.js": "^18.5.1",
     "@types/yargs": "^15.0.4",
@@ -59,7 +59,6 @@
     "copyfiles": "^2.3.0",
     "mocha": "^7.1.1",
     "prettier": "^2.0.5",
-    "serve-handler": "^6.1.2",
     "ts-node": "^8.9.0",
     "typescript": "^3.8.3"
   }

@@ -55,7 +55,7 @@ export class HackiumBrowser extends Browser {
         const code = `
           window.postMessage({owner:'hackium', name:'pageActivated', data:{tabId:${tabId}, windowId:${windowId}}});
         `;
-        this.log.debug(`chrome.tabs.onActivated triggered. Calling ${code}`);
+        this.log.debug(`chrome.tabs.onActivated triggered. Calling %o`, code);
         await this.extension.send('chrome.tabs.executeScript', tabId, { code })
       });
       await this.extension.addListener('chrome.tabs.onUpdated', async (tabId) => {
@@ -63,7 +63,7 @@ export class HackiumBrowser extends Browser {
           const code = `
             window.postMessage({owner:'hackium', name:'pageActivated', data:{tabId:${tabId}}});
           `;
-          this.log.debug(`Active page updated. Calling ${code}`);
+          this.log.debug(`Active page updated. Calling %o`, code);
           await this.extension.send('chrome.tabs.executeScript', tabId, { code })
         }
       });
@@ -195,7 +195,7 @@ export class HackiumBrowser extends Browser {
 
   setActivePage(page: Page) {
     if (!page) this.log.debug(`tried to set active page to invalid page object.`);
-    this.log.debug(`setting active page (${page.url()})`);
+    this.log.debug(`setting active page with URL %o`, page.url());
     this.activePage = page;
     this.emit(HackiumBrowserEmittedEvents.ActivePageChanged, page);
   }

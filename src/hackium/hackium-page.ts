@@ -80,7 +80,7 @@ export class HackiumPage extends Page {
       defaultViewport: Viewport | null
     ): Promise<HackiumPage> {
       const page = new HackiumPage(client, target, ignoreHTTPSErrors);
-      page.log.debug('Creating page');
+      page.log.debug('Created page new page for target %o', target._targetId);
       page.instrumentationConfig = config;
       // console.log(defaultViewport);
       // if (defaultViewport) await page.setViewport(defaultViewport);
@@ -93,7 +93,17 @@ export class HackiumPage extends Page {
     //@ts-ignore I hate private methods.
     await super._initialize();
     if (this.cachedInterceptors.length === 0) this.loadInterceptors();
-    await this.instrumentSelf(config);
+    try {
+      await this.instrumentSelf(config);
+    } catch (e) {
+      if (e.message && e.message.match(/Protocol error.*Target closed/)) {
+        this.log.debug(
+          'Error: Page instrumentation failed: communication could not be estalished due to a protocol error.\n' +
+          '-- This is likely because the page has already been closed. It is probably safe to ignore this error if you do not observe any problems in casual usage.');
+      } else {
+        throw e;
+      }
+    }
   }
 
   executeOrQueue(action: () => void | Promise<void>) {
@@ -108,7 +118,9 @@ export class HackiumPage extends Page {
     return Promise.all([
       this.evaluate(fn, ...args),
       this.evaluateOnNewDocument(fn, ...args),
-    ]).then(_ => { })
+    ]).catch((e) => {
+      this.log.debug(e)
+    }).then(_ => { })
   }
 
   browser(): HackiumBrowser {
@@ -137,17 +149,17 @@ export class HackiumPage extends Page {
 
   private async instrumentSelf(config: PageInstrumentationConfig = this.instrumentationConfig) {
     this.instrumentationConfig = config;
-    this.log.debug(`instrumenting page ${this.url()} with config %o`, config);
+    this.log.debug(`instrumenting page %o with config %o`, this.url(), config);
 
     await this.exposeFunction(strings.get('clienteventhandler'), (data: any) => {
       const name = data.name;
-      this.log.debug(`Received event '${name}' from client with data %o`, data);
+      this.log.debug(`Received event '%o' from client with data %o`, name, data);
       this.emit(`hackiumclient:${name}`, new HackiumClientEvent(name, data));
     });
 
     this.on('hackiumclient:onClientLoaded', (e: HackiumClientEvent) => {
       this.clientLoaded = true;
-      this.log.debug(`client loaded, running ${this.queuedActions.length} queued actions`);
+      this.log.debug(`client loaded, running %o queued actions`, this.queuedActions.length);
       waterfallMap(this.queuedActions, async (action: () => void | Promise<void>, i: number) => {
         return await action();
       });
@@ -161,7 +173,7 @@ export class HackiumPage extends Page {
       await this.loadInjections();
     }
 
-    this.log.debug(`adding ${this.cachedInjections.length} scripts to evaluate on every load`);
+    this.log.debug(`adding %o scripts to evaluate on every load`, this.cachedInjections.length);
     for (let i = 0; i < this.cachedInjections.length; i++) {
       await this.evaluateNowAndOnNewDocument(this.cachedInjections[i]);
     }
@@ -172,10 +184,10 @@ export class HackiumPage extends Page {
   private registerInterceptionRequests(interceptors: Interceptor[]) {
     const browser = this.browserContext().browser();
     interceptors.forEach((interceptor) => {
-      this.log.debug(`Registering interceptor for pattern '${interceptor.intercept}'`);
+      this.log.debug(`Registering interceptor for pattern %o`, interceptor.intercept);
       intercept(this, interceptor.intercept, {
         onResponseReceived: (evt: Interceptor.OnResponseReceivedEvent) => {
-          this.log.debug(`Intercepted response for URL ${evt.request.url}`);
+          this.log.debug(`Intercepted response for URL %o`, evt.request.url);
           // if (this.instrumentationConfig.watch) this.loadInterceptors();
           let response = evt.response;
           if (response) evt.response = response;
@@ -187,37 +199,38 @@ export class HackiumPage extends Page {
 
   private loadInterceptors() {
     this.cachedInterceptors = [];
-    this.log.debug(`loading ${this.instrumentationConfig.interceptors.length} interceptor modules`)
+    this.log.debug(`loading: %o interceptor modules`, this.instrumentationConfig.interceptors.length);
     this.instrumentationConfig.interceptors.forEach((modulePath) => {
       try {
         const interceptorPath = path.join(this.instrumentationConfig.pwd, modulePath);
-        this.log.debug(`Reading interceptor module from ${interceptorPath}`)
+        this.log.debug(`Reading interceptor module from %o`, interceptorPath)
         this.cachedInterceptors.push(
           importFresh(interceptorPath) as Interceptor,
         );
       } catch (e) {
-        this.log.warn(`Could not load interceptor: ${e.message}`);
+        this.log.warn(`Could not load interceptor: %o`, e.message);
       }
     });
   }
 
   private async loadInjections() {
-    this.log.debug(`reading files to inject on new document`);
     this.cachedInjections = [];
     const files = this.defaultInjections.concat(this.instrumentationConfig.injections);
+    this.log.debug(`loading: %o modules to inject before page load (%o default, %o user) `, files.length, this.defaultInjections.length, this.instrumentationConfig.injections.length);
     const injections = await onlySettled(
       files.map((f) => {
         const location = f.startsWith(path.sep) ? f : path.join(this.instrumentationConfig.pwd, f);
-        this.log.debug(`reading ${location} (originally ${f})`);
+        this.log.debug(`reading %o (originally %o)`, location, f);
         return fs.readFile(location, 'utf-8').then(renderTemplate)
       }),
     );
-    this.log.debug(`read ${injections.length} files`);
+    this.log.debug(`successfully read %o files`, injections.length);
     this.cachedInjections = injections;
     return injections;
   }
 
   addInterceptor(interceptor: Interceptor) {
+    this.log.debug('adding interceptor for pattern %o', interceptor.intercept);
     this.cachedInterceptors.push(interceptor);
     this.registerInterceptionRequests([interceptor]);
   }

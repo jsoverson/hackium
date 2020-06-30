@@ -113,7 +113,7 @@ class Hackium extends EventEmitter {
       );
     }
 
-    // TODO unknown cast will be fixed with puppeteer-extra but is another reason to move away.
+    // TODO the "as unknown" cast will be fixed with puppeteer-extra but is another reason to move away.
     // this.puppeteer = addExtra(puppeteer as unknown as VanillaPuppeteer);
 
     // if (this.config.adblock) {
@@ -125,14 +125,6 @@ class Hackium extends EventEmitter {
     //   );
     // }
 
-    // overridePuppeteerMethods({
-    //   page: {
-    //     injections: this.config.inject,
-    //     interceptors: this.config.interceptor,
-    //     watch: this.config.watch,
-    //     pwd: this.config.pwd
-    //   }
-    // });
   }
 
   getBrowser(): HackiumBrowser {
@@ -202,7 +194,11 @@ class Hackium extends EventEmitter {
   }
 
   async close() {
-    if (this.browser) return this.browser.close();
+    this.log.debug('closing browser');
+    if (this.browser) {
+      await this.browser.close();
+      this.log.debug('closed browser');
+    }
   }
 
 }

@@ -28,7 +28,7 @@ export class HackiumTarget extends Target {
   ) {
     super(targetInfo, browserContext, sessionFactory, ignoreHTTPSErrors, defaultViewport);
     mixin(this, new EventEmitter());
-    this.log.debug('Constructing new target');
+    this.log.debug('Constructed new target');
   }
 
   async page(): Promise<HackiumPage> {

@@ -3,3 +3,7 @@ node_modules
 package-lock.json
 dist/
 theme/Cached Theme.pak
+.cache
+.repl_history
+test/fixtures/interceptorTemp.js
+scratch/
