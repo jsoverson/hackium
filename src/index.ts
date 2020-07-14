@@ -1,28 +1,40 @@
+import { ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import findRoot from 'find-root';
-import fs from 'fs';
-import { promisify } from 'util';
 import { createRequire } from 'module';
 import path from 'path';
 import { mergeLaunchOptions } from 'puppeteer-extensionbridge';
-import { BrowserOptions, ChromeArgOptions, LaunchOptions } from 'puppeteer/lib/launcher/LaunchOptions';
-import vm from 'vm';
-import { Arguments, ArgumentsWithDefaults, defaultArguments } from './arguments';
-import { HackiumBrowser, BrowserCloseCallback } from './hackium/hackium-browser';
-import Logger from './util/logger';
-import puppeteer from './puppeteer';
-import { waterfallMap } from './util/promises';
 import { Browser } from 'puppeteer/lib/Browser';
-import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
-import { ChildProcess } from 'child_process';
 import { Connection } from 'puppeteer/lib/Connection';
+import {
+  BrowserOptions,
+  ChromeArgOptions,
+  LaunchOptions,
+} from 'puppeteer/lib/launcher/LaunchOptions';
+import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
+import vm from 'vm';
+import {
+  Arguments,
+  ArgumentsWithDefaults,
+  defaultArguments,
+} from './arguments';
+import {
+  BrowserCloseCallback,
+  HackiumBrowser,
+} from './hackium/hackium-browser';
 import { HackiumPage } from './hackium/hackium-page';
+import puppeteer from './puppeteer';
+import { read, resolve } from './util/file';
+import Logger from './util/logger';
+import { waterfallMap } from './util/promises';
 
 export { patterns } from 'puppeteer-interceptor';
 
 declare module 'puppeteer/lib/Launcher' {
   interface ChromeLauncher {
-    launch(options: LaunchOptions & ChromeArgOptions & BrowserOptions): Promise<HackiumBrowser>
+    launch(
+      options: LaunchOptions & ChromeArgOptions & BrowserOptions,
+    ): Promise<HackiumBrowser>;
   }
 }
 
@@ -41,23 +53,25 @@ function setEnv(env: string[] = []) {
   });
 }
 
-Browser.create = async function (connection: Connection,
+Browser.create = async function (
+  connection: Connection,
   contextIds: string[],
   ignoreHTTPSErrors: boolean,
   defaultViewport?: Viewport,
   process?: ChildProcess,
-  closeCallback?: BrowserCloseCallback): Promise<HackiumBrowser> {
+  closeCallback?: BrowserCloseCallback,
+): Promise<HackiumBrowser> {
   const browser = new HackiumBrowser(
     connection,
     contextIds,
     ignoreHTTPSErrors,
     defaultViewport,
     process,
-    closeCallback
+    closeCallback,
   );
   await connection.send('Target.setDiscoverTargets', { discover: true });
   return browser;
-}
+};
 
 class Hackium extends EventEmitter {
   browser?: HackiumBrowser;
@@ -70,8 +84,18 @@ class Hackium extends EventEmitter {
     '--disable-infobars',
     '--no-default-browser-check',
     `--load-extension=${path.join(findRoot(__dirname), 'extensions', 'theme')}`,
-    `--homepage=file://${path.join(findRoot(__dirname), 'pages', 'homepage', 'index.html')}`,
-    `file://${path.join(findRoot(__dirname), 'pages', 'homepage', 'index.html')}`
+    `--homepage=file://${path.join(
+      findRoot(__dirname),
+      'pages',
+      'homepage',
+      'index.html',
+    )}`,
+    `file://${path.join(
+      findRoot(__dirname),
+      'pages',
+      'homepage',
+      'index.html',
+    )}`,
   ];
 
   private launchOptions: PuppeteerLaunchOptions = {
@@ -90,7 +114,7 @@ class Hackium extends EventEmitter {
       interceptors: this.config.interceptor,
       injections: this.config.inject,
       pwd: this.config.pwd,
-      watch: this.config.watch
+      watch: this.config.watch,
     });
 
     if ('devtools' in this.config) {
@@ -107,10 +131,7 @@ class Hackium extends EventEmitter {
     this.launchOptions.args = this.defaultChromiumArgs;
     if (this.config.chromeOutput) {
       this.launchOptions.dumpio = true;
-      this.defaultChromiumArgs.push(
-        '--enable-logging=stderr',
-        '--v=1',
-      );
+      this.defaultChromiumArgs.push('--enable-logging=stderr', '--v=1');
     }
 
     // TODO the "as unknown" cast will be fixed with puppeteer-extra but is another reason to move away.
@@ -124,7 +145,6 @@ class Hackium extends EventEmitter {
     //     }),
     //   );
     // }
-
   }
 
   getBrowser(): HackiumBrowser {
@@ -134,12 +154,12 @@ class Hackium extends EventEmitter {
   }
 
   async launch(options: LaunchOptions = {}) {
-    const browser = await puppeteer.launch(
+    const browser = (await puppeteer.launch(
       mergeLaunchOptions(Object.assign(options, this.launchOptions)),
-    ) as HackiumBrowser;
+    )) as HackiumBrowser;
     await browser.onInitialization();
 
-    return this.browser = browser;
+    return (this.browser = browser);
   }
 
   async cliBehavior() {
@@ -156,8 +176,9 @@ class Hackium extends EventEmitter {
   }
 
   async runScript(file: string, args: any[] = [], src?: string) {
+    const truePath = resolve([file], this.config.pwd);
     if (!src) {
-      src = await promisify(fs.readFile)(file, 'utf-8');
+      src = await read([truePath]);
     }
 
     const browser = await this.getBrowser();
@@ -171,9 +192,9 @@ class Hackium extends EventEmitter {
       pages,
       browser,
       module,
-      require: createRequire(file),
-      __dirname: path.dirname(file),
-      __filename: path.resolve(file),
+      require: createRequire(truePath),
+      __dirname: path.dirname(truePath),
+      __filename: truePath,
       args: this.config._,
       __rootResult: null,
     };
@@ -200,7 +221,6 @@ class Hackium extends EventEmitter {
       this.log.debug('closed browser');
     }
   }
-
 }
 
 export default Hackium;

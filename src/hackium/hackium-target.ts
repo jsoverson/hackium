@@ -1,4 +1,3 @@
-
 import { Target } from 'puppeteer/lib/Target';
 import { BrowserContext } from 'puppeteer/lib/Browser';
 import Protocol from 'puppeteer/lib/protocol';
@@ -10,7 +9,7 @@ import Logger from '../util/logger';
 import { EventEmitter } from 'puppeteer/lib/EventEmitter';
 import { mixin } from '../util/mixin';
 
-export interface HackiumTarget extends Target, EventEmitter { }
+export interface HackiumTarget extends Target, EventEmitter {}
 
 export const enum TargetEmittedEvents {
   TargetInfoChanged = 'targetInfoChanged',
@@ -24,9 +23,15 @@ export class HackiumTarget extends Target {
     browserContext: BrowserContext,
     sessionFactory: () => Promise<CDPSession>,
     ignoreHTTPSErrors: boolean,
-    defaultViewport: Viewport | null
+    defaultViewport: Viewport | null,
   ) {
-    super(targetInfo, browserContext, sessionFactory, ignoreHTTPSErrors, defaultViewport);
+    super(
+      targetInfo,
+      browserContext,
+      sessionFactory,
+      ignoreHTTPSErrors,
+      defaultViewport,
+    );
     mixin(this, new EventEmitter());
     this.log.debug('Constructed new target');
   }
@@ -39,6 +44,4 @@ export class HackiumTarget extends Target {
     super._targetInfoChanged(targetInfo);
     this.emit(TargetEmittedEvents.TargetInfoChanged, targetInfo);
   }
-
 }
-

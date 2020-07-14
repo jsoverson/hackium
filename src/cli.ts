@@ -18,17 +18,20 @@ const DEFAULT_CONFIG_NAMES = ['hackium.json', 'hackium.config.js'];
 export default function runCli() {
   const argParser = yargs
     .commandDir('cmds')
-    .command('$0', 'start hackium', (yargs) => {
-      yargs
-        .options(definition)
-        .option('config', {
+    .command(
+      '$0',
+      'start hackium',
+      (yargs) => {
+        yargs.options(definition).option('config', {
           alias: 'c',
           default: '',
           type: 'string',
-        })
-    }, (argv) => {
-      main(argv);
-    })
+        });
+      },
+      (argv) => {
+        main(argv);
+      },
+    )
     .help();
 
   const args = argParser.argv;
@@ -41,7 +44,7 @@ export default function runCli() {
     for (let i = 0; i < configFilesToCheck.length; i++) {
       const fileName = configFilesToCheck[i];
       const location = path.join(process.env.PWD || '', fileName);
-      if (!await exists(location)) {
+      if (!(await exists(location))) {
         log.debug(`no config found at ${location}`);
         continue;
       }
@@ -65,7 +68,9 @@ export default function runCli() {
         log.info('Hackium launched');
       })
       .catch((e) => {
-        log.error('Hackium failed during bootup and may be in an unstable state.');
+        log.error(
+          'Hackium failed during bootup and may be in an unstable state.',
+        );
         log.error(e);
       })
       .finally(async () => {
@@ -73,7 +78,9 @@ export default function runCli() {
 
         const replInstance = repl.start('> ');
         if (config.pwd) {
-          const setupHistory = promisify(replInstance.setupHistory.bind(replInstance));
+          const setupHistory = promisify(
+            replInstance.setupHistory.bind(replInstance),
+          );
           await setupHistory(path.join(config.pwd, '.repl_history'));
         } else {
           log.debug('pwd not set, repl history can not be saved');
@@ -84,9 +91,9 @@ export default function runCli() {
         replInstance.context.cdp = browser.connection;
         replInstance.context.extensionBridge = browser.extension;
         replInstance.context.page = browser.activePage;
-        browser.on(HackiumBrowserEmittedEvents.ActivePageChanged, (page: Page) => {
-          replInstance.context.page = page;
-        })
+        // browser.on(HackiumBrowserEmittedEvents.ActivePageChanged, (page: Page) => {
+        //   replInstance.context.page = page;
+        // })
         replInstance.on('exit', () => {
           browser.close();
         });
@@ -99,4 +106,3 @@ export default function runCli() {
       });
   }
 }
-

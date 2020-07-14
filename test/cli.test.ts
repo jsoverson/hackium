@@ -18,8 +18,9 @@ describe('CLI', function () {
   before(async () => {
     server = await start(__dirname, 'server_root');
     dir = '/tmp/randomDir' + Math.random();
-    baseArgs = `--url="${server.url('index.html')}" --pwd="${__dirname}" --userDataDir=${dir}`;
-
+    baseArgs = `--url="${server.url(
+      'index.html',
+    )}" --pwd="${__dirname}" --userDataDir=${dir}`;
   });
 
   after(async () => {
@@ -31,7 +32,7 @@ describe('CLI', function () {
     if (instance) {
       return instance.close();
     }
-  })
+  });
 
   it('Should go to a default URL', async () => {
     instance = new Hackium(getArgs(`${baseArgs}`));
@@ -52,9 +53,7 @@ describe('CLI', function () {
   });
 
   it('Should intercept scripts', async () => {
-    instance = new Hackium(
-      getArgs(`${baseArgs} --i fixtures/interceptor.js`),
-    );
+    instance = new Hackium(getArgs(`${baseArgs} --i fixtures/interceptor.js`));
     const browser = await instance.cliBehavior();
     const [page] = await browser.pages();
     const value = await page.evaluate('window.interceptedVal');
@@ -159,7 +158,7 @@ describe('CLI', function () {
   });
 
   it('Should run hackium scripts', async () => {
-    const scriptPath = path.join(__dirname, 'fixtures', 'script.js');
+    const scriptPath = path.join('.', 'fixtures', 'script.js');
 
     instance = new Hackium(
       getArgs(`${baseArgs} -e ${scriptPath} -- ${server.url('two.html')}`),
@@ -179,8 +178,10 @@ describe('CLI', function () {
     expect(url).to.match(/two.html$/);
 
     const bodyEl = await pageNew.$('body');
-    const body = await pageNew.evaluate((bodyEl: HTMLElement) => bodyEl.innerHTML, bodyEl);
+    const body = await pageNew.evaluate(
+      (bodyEl: HTMLElement) => bodyEl.innerHTML,
+      bodyEl,
+    );
     expect(body).to.equal(require('./fixtures/module'));
   });
-
 });
