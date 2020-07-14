@@ -15,6 +15,7 @@ export function resolve(parts: string[], pwd = ''): string {
   }
 }
 
-export function read(parts: string[], pwd = '') {
-  return fs.readFile(resolve(parts, pwd), 'utf-8');
+export function read(parts: string | string[], pwd = '') {
+  if (Array.isArray(parts)) return fs.readFile(resolve(parts, pwd), 'utf-8');
+  return fs.readFile(parts, 'utf-8');
 }

@@ -6,22 +6,11 @@ import path from 'path';
 import { mergeLaunchOptions } from 'puppeteer-extensionbridge';
 import { Browser } from 'puppeteer/lib/Browser';
 import { Connection } from 'puppeteer/lib/Connection';
-import {
-  BrowserOptions,
-  ChromeArgOptions,
-  LaunchOptions,
-} from 'puppeteer/lib/launcher/LaunchOptions';
+import { BrowserOptions, ChromeArgOptions, LaunchOptions } from 'puppeteer/lib/launcher/LaunchOptions';
 import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
 import vm from 'vm';
-import {
-  Arguments,
-  ArgumentsWithDefaults,
-  defaultArguments,
-} from './arguments';
-import {
-  BrowserCloseCallback,
-  HackiumBrowser,
-} from './hackium/hackium-browser';
+import { Arguments, ArgumentsWithDefaults, defaultArguments } from './arguments';
+import { BrowserCloseCallback, HackiumBrowser } from './hackium/hackium-browser';
 import { HackiumPage } from './hackium/hackium-page';
 import puppeteer from './puppeteer';
 import { read, resolve } from './util/file';
@@ -32,19 +21,13 @@ export { patterns } from 'puppeteer-interceptor';
 
 declare module 'puppeteer/lib/Launcher' {
   interface ChromeLauncher {
-    launch(
-      options: LaunchOptions & ChromeArgOptions & BrowserOptions,
-    ): Promise<HackiumBrowser>;
+    launch(options: LaunchOptions & ChromeArgOptions & BrowserOptions): Promise<HackiumBrowser>;
   }
 }
 
 type PuppeteerLaunchOptions = LaunchOptions & ChromeArgOptions & BrowserOptions;
 
-const ENVIRONMENT = [
-  'GOOGLE_API_KEY=no',
-  'GOOGLE_DEFAULT_CLIENT_ID=no',
-  'GOOGLE_DEFAULT_CLIENT_SECRET=no',
-];
+const ENVIRONMENT = ['GOOGLE_API_KEY=no', 'GOOGLE_DEFAULT_CLIENT_ID=no', 'GOOGLE_DEFAULT_CLIENT_SECRET=no'];
 
 function setEnv(env: string[] = []) {
   env.forEach((e) => {
@@ -61,14 +44,7 @@ Browser.create = async function (
   process?: ChildProcess,
   closeCallback?: BrowserCloseCallback,
 ): Promise<HackiumBrowser> {
-  const browser = new HackiumBrowser(
-    connection,
-    contextIds,
-    ignoreHTTPSErrors,
-    defaultViewport,
-    process,
-    closeCallback,
-  );
+  const browser = new HackiumBrowser(connection, contextIds, ignoreHTTPSErrors, defaultViewport, process, closeCallback);
   await connection.send('Target.setDiscoverTargets', { discover: true });
   return browser;
 };
@@ -84,18 +60,8 @@ class Hackium extends EventEmitter {
     '--disable-infobars',
     '--no-default-browser-check',
     `--load-extension=${path.join(findRoot(__dirname), 'extensions', 'theme')}`,
-    `--homepage=file://${path.join(
-      findRoot(__dirname),
-      'pages',
-      'homepage',
-      'index.html',
-    )}`,
-    `file://${path.join(
-      findRoot(__dirname),
-      'pages',
-      'homepage',
-      'index.html',
-    )}`,
+    `--homepage=file://${path.join(findRoot(__dirname), 'pages', 'homepage', 'index.html')}`,
+    `file://${path.join(findRoot(__dirname), 'pages', 'homepage', 'index.html')}`,
   ];
 
   private launchOptions: PuppeteerLaunchOptions = {
@@ -148,30 +114,33 @@ class Hackium extends EventEmitter {
   }
 
   getBrowser(): HackiumBrowser {
-    if (!this.browser)
-      throw new Error('Attempt to capture browser before initialized');
+    if (!this.browser) throw new Error('Attempt to capture browser before initialized');
     return this.browser;
   }
 
   async launch(options: LaunchOptions = {}) {
-    const browser = (await puppeteer.launch(
-      mergeLaunchOptions(Object.assign(options, this.launchOptions)),
-    )) as HackiumBrowser;
+    const browser = (await puppeteer.launch(mergeLaunchOptions(Object.assign(options, this.launchOptions)))) as HackiumBrowser;
     await browser.onInitialization();
 
     return (this.browser = browser);
   }
 
   async cliBehavior() {
+    const cliBehaviorLog = this.log.debug.extend('cli-behavior');
+    cliBehaviorLog('running default cli behavior');
+    cliBehaviorLog('launching browser');
     const browser = await this.launch();
+    cliBehaviorLog('launched browser');
     const [page] = await browser.pages();
     if (this.config.url) {
-      this.log.debug(`navigating to ${this.config.url}`);
+      cliBehaviorLog(`navigating to ${this.config.url}`);
       await page.goto(this.config.url);
     }
+    cliBehaviorLog(`running %o hackium scripts`, this.config.execute.length);
     await waterfallMap(this.config.execute, (file) => {
       return this.runScript(file).then((result) => console.log(result));
     });
+    cliBehaviorLog(`core cli behavior complete`);
     return browser;
   }
 

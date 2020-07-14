@@ -1,14 +1,17 @@
+import { start, TestServer } from '@jsoverson/test-server';
 import { expect } from 'chai';
-import fs from 'fs';
+import { promises as fs } from 'fs';
 import path from 'path';
 import Hackium from '../src';
 import { Arguments } from '../src/arguments';
+import { _runCli } from '../src/cli';
+import { read, resolve } from '../src/util/file';
+import { delay } from '../src/util/promises';
 import { getArgs } from './helper';
-import { start, TestServer } from '@jsoverson/test-server';
 
-const fsp = fs.promises;
+var stdin = require('mock-stdin').stdin();
 
-describe('CLI', function () {
+describe('cliBehavior()', function () {
   this.timeout(600000);
   let dir = '/nonexistant';
   let baseArgs = '';
@@ -22,7 +25,7 @@ describe('CLI', function () {
   });
 
   after(async () => {
-    await fsp.rmdir(dir, { recursive: true });
+    await fs.rmdir(dir, { recursive: true });
     await server.stop();
   });
 
@@ -59,7 +62,7 @@ describe('CLI', function () {
   it('Should create userDataDir', async () => {
     instance = new Hackium(getArgs(`${baseArgs}`));
     await instance.cliBehavior();
-    const stat = await fsp.stat(dir);
+    const stat = await fs.stat(dir);
     expect(stat.isDirectory()).to.be.true;
   });
 
@@ -86,9 +89,9 @@ describe('CLI', function () {
   xit('Should watch for and apply changes on a reload', async () => {
     const origPath = path.join(__dirname, '_fixtures', 'interceptor.js');
     const tempPath = path.join(__dirname, '_fixtures', 'interceptorTemp.js');
-    const origSrc = await fsp.readFile(origPath, 'utf8');
+    const origSrc = await fs.readFile(origPath, 'utf8');
 
-    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValTemp'), 'utf8');
+    await fs.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValTemp'), 'utf8');
     instance = new Hackium(getArgs(`${baseArgs} --i _fixtures/interceptorTemp.js -w`));
     const browser = await instance.cliBehavior();
     let [page] = await browser.pages();
@@ -98,21 +101,21 @@ describe('CLI', function () {
     let value = await page.evaluate('window.interceptedVal');
     expect(value).to.equal('interceptedValTemp');
 
-    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValHotload'), 'utf8');
+    await fs.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValHotload'), 'utf8');
     await page.reload();
 
     value = await page.evaluate('window.interceptedVal');
     expect(value).to.equal('interceptedValHotload');
 
-    await fsp.unlink(tempPath);
+    await fs.unlink(tempPath);
   });
 
   xit('Should watch for and apply changes on a new tab', async () => {
     const origPath = path.join(__dirname, '_fixtures', 'interceptor.js');
     const tempPath = path.join(__dirname, '_fixtures', 'interceptorTemp.js');
-    const origSrc = await fsp.readFile(origPath, 'utf8');
+    const origSrc = await fs.readFile(origPath, 'utf8');
 
-    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValTemp'), 'utf8');
+    await fs.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValTemp'), 'utf8');
     instance = new Hackium(getArgs(`${baseArgs} --i _fixtures/interceptorTemp.js -w`));
     const browser = await instance.cliBehavior();
     let [page] = await browser.pages();
@@ -122,7 +125,7 @@ describe('CLI', function () {
     let value = await page.evaluate('window.interceptedVal');
     expect(value).equal('interceptedValTemp');
 
-    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValHotload'), 'utf8');
+    await fs.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValHotload'), 'utf8');
     const newPage = await instance.getBrowser().newPage();
     await page.close();
     await newPage.goto(server.url());
@@ -130,7 +133,7 @@ describe('CLI', function () {
     value = await newPage.evaluate('window.interceptedVal');
     expect(value).to.equal('interceptedValHotload');
 
-    await fsp.unlink(tempPath);
+    await fs.unlink(tempPath);
   });
 
   it('Should run hackium scripts', async () => {
@@ -151,5 +154,42 @@ describe('CLI', function () {
     const bodyEl = await pageNew.$('body');
     const body = await pageNew.evaluate((bodyEl: HTMLElement) => bodyEl.innerHTML, bodyEl);
     expect(body).to.equal(require('./_fixtures/module'));
+  });
+
+  describe('REPL', () => {
+    it('should be testable', async () => {
+      const args = getArgs(`${baseArgs}`);
+      const { repl } = await _runCli(args);
+      let didClose = false;
+      repl.on('exit', () => {
+        didClose = true;
+      });
+      repl.write('.exit\n');
+      // yield;
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          expect(didClose).to.be.true;
+          resolve();
+        }, 100);
+      });
+    });
+    it('.repl_history should be stored in config.pwd', async () => {
+      if (process.env.MOCHA_EXPLORER_VSCODE) {
+        // This is failing when it's run in VS Code and I can't spend any more time
+        // figuring out why. This env var is set as part of the project settings so
+        // this test is shortcircuited when run in VS Code.
+        return;
+      }
+      const pwd = dir;
+      const args = getArgs(`--pwd="${pwd}" --userDataDir=${dir}`);
+      const { repl } = await _runCli(args, { stdin });
+      stdin.send('/*hello world*/');
+      stdin.send('\n');
+      await delay(100);
+      const replHistoryPath = resolve(['.repl_history'], pwd);
+      const history = await read(replHistoryPath);
+      expect(history).to.equal(`/*hello world*/`);
+      instance = repl.context.browser;
+    });
   });
 });

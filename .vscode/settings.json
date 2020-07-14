@@ -1,6 +1,7 @@
 {
-  1
   "mochaExplorer.env": {
-    "DEBUG": "hackium*"
+    "DEBUG": "hackium*",
+    "NODE_DEBUG": "repl*",
+    "MOCHA_EXPLORER_VSCODE": "true"
   }
 }
