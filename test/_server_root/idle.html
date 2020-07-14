@@ -1,0 +1,34 @@
+<html>
+  <head>
+    <title>Page two</title>
+    <script>
+      const startTime = Date.now();
+      let lastActive = startTime;
+      let totalTime = Date.now() - startTime;
+      let idleTime = startTime - lastActive;
+      function resetIdleTime() {
+        lastActive = Date.now();
+      }
+      function render() {
+        totalTime = Date.now() - startTime;
+        idleTime = Date.now() - lastActive;
+        document.getElementById('idle').innerHTML = idleTime;
+        document.getElementById('lifetime').innerHTML = totalTime;
+      }
+      window.addEventListener('load', (evt) => {
+        document.addEventListener('mousemove', resetIdleTime);
+        document.addEventListener('mousup', resetIdleTime);
+        document.addEventListener('mousedown', resetIdleTime);
+        document.addEventListener('keyup', resetIdleTime);
+        document.addEventListener('keydown', resetIdleTime);
+        document.addEventListener('keypress', resetIdleTime);
+        setInterval(render, 250);
+      });
+    </script>
+  </head>
+
+  <body>
+    <h1>Idle for: <span id="idle">0</span>ms</h1>
+    <h3>Total page life: <span id="lifetime">0</span>ms</h3>
+  </body>
+</html>

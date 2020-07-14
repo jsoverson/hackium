@@ -9,7 +9,7 @@
     "clean": "rm -rf dist",
     "copyfiles": "copyfiles src/**/*.js dist",
     "precompile": "npm run clean && mkdir dist && npm run copyfiles",
-    "prewatch": "npm run prebuild",
+    "prewatch": "npm run compile",
     "prepublishOnly": "npm run compile",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
     "watch": "tsc -w",

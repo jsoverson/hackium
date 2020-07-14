@@ -178,6 +178,7 @@ class Hackium extends EventEmitter {
   async runScript(file: string, args: any[] = [], src?: string) {
     const truePath = resolve([file], this.config.pwd);
     if (!src) {
+      this.log.debug('reading in %o to run as a hackium script', truePath);
       src = await read([truePath]);
     }
 
@@ -203,6 +204,7 @@ class Hackium extends EventEmitter {
     const wrappedSrc = `
     __rootResult = (async function hackiumScript(){${src}}())
     `;
+    this.log.debug('running script %O', wrappedSrc);
 
     try {
       vm.runInContext(wrappedSrc, context);

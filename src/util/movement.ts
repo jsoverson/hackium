@@ -1,10 +1,9 @@
-
 import * as d3 from 'd3-ease';
 import { Random } from './random';
 
 export const stepFunctions = {
-  easePolyInOut: (t: number, from: number, to: number) => from + (to - from) * (d3.easePolyInOut(t)),
-}
+  easePolyInOut: (t: number, from: number, to: number) => from + (to - from) * d3.easePolyInOut(t),
+};
 
 type StepFunction = (t: number, from: number, to: number) => number;
 
@@ -14,36 +13,30 @@ export function getPointsBetween(
   toX: number,
   toY: number,
   options: {
-    stepFunction?: StepFunction,
-    stepFunctionY?: StepFunction,
-    stepFunctionX?: StepFunction,
-    duration?: number
-  } = {}
+    stepFunction?: StepFunction;
+    stepFunctionY?: StepFunction;
+    stepFunctionX?: StepFunction;
+    duration?: number;
+  } = {},
 ) {
   const {
     duration = 1000,
     stepFunction = stepFunctions.easePolyInOut,
     stepFunctionX = stepFunction,
-    stepFunctionY = stepFunction
+    stepFunctionY = stepFunction,
   } = options;
   const framerate = 60;
-  const frames = Math.floor(duration / 1000 * framerate);
+  const frames = Math.floor((duration / 1000) * framerate);
   const frameInterval = 1000 / framerate;
 
   return new Array(frames)
     .fill(frameInterval)
-    .map((frameInterval, i) => i === frames - 1 ? 1 : (frameInterval * i) / duration) /* percentage to completion */
+    .map((frameInterval, i) => (i === frames - 1 ? 1 : (frameInterval * i) / duration)) /* percentage to completion */
     .map((t) => {
-      return [
-        (stepFunctionX || stepFunction)(t, fromX, toX),
-        (stepFunctionY || stepFunction)(t, fromY, toY),
-        t
-      ]
-    })
+      return [(stepFunctionX || stepFunction)(t, fromX, toX), (stepFunctionY || stepFunction)(t, fromY, toY), t];
+    });
   // .map((val) => { console.log(); return val; })
 }
-
-
 
 export class Vector {
   x: number;
@@ -56,16 +49,16 @@ export class Vector {
     return this.subtract(b).magnitude();
   }
   multiply(b: Vector | number) {
-    return typeof b === 'number' ? new Vector(this.x * b, this.y * b) : new Vector(this.x * b.x, this.y * b.y)
+    return typeof b === 'number' ? new Vector(this.x * b, this.y * b) : new Vector(this.x * b.x, this.y * b.y);
   }
   divide(b: Vector | number) {
-    return typeof b === 'number' ? new Vector(this.x / b, this.y / b) : new Vector(this.x / b.x, this.y / b.y)
+    return typeof b === 'number' ? new Vector(this.x / b, this.y / b) : new Vector(this.x / b.x, this.y / b.y);
   }
   subtract(b: Vector | number) {
-    return typeof b === 'number' ? new Vector(this.x - b, this.y - b) : new Vector(this.x - b.x, this.y - b.y)
+    return typeof b === 'number' ? new Vector(this.x - b, this.y - b) : new Vector(this.x - b.x, this.y - b.y);
   }
   add(b: Vector | number) {
-    return typeof b === 'number' ? new Vector(this.x + b, this.y + b) : new Vector(this.x + b.x, this.y + b.y)
+    return typeof b === 'number' ? new Vector(this.x + b, this.y + b) : new Vector(this.x + b.x, this.y + b.y);
   }
   magnitude() {
     return Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2));
@@ -93,7 +86,7 @@ export class SimulatedMovement {
 
     const totalDistance = start.distanceTo(end);
 
-    const points = [];
+    const points = [[start.x, start.y]];
     let done = false;
     while (!done) {
       var remainingDistance = Math.max(start.distanceTo(end), 1);
@@ -106,26 +99,25 @@ export class SimulatedMovement {
 
       // if we're further than the target area then go fast, otherwise slow down.
       if (remainingDistance >= this.targetArea) {
-        force = force
-          .divide(sqrt3)
-          .add((Random.rng.float(0, this.wind * 2 + 1) - this.wind) / sqrt5);
+        force = force.divide(sqrt3).add((Random.rng.float(0, this.wind * 2 + 1) - this.wind) / sqrt5);
       } else {
         force = force.divide(Math.SQRT2);
       }
-      velocity = velocity
-        .add(force)
-        .add(end.subtract(start).multiply(this.gravity).divide(remainingDistance))
+      velocity = velocity.add(force).add(end.subtract(start).multiply(this.gravity).divide(remainingDistance));
 
       if (velocity.magnitude() > maxStep) {
         var randomDist = maxStep / 2.0 + Random.rng.float(0, maxStep / 2);
         velocity = velocity.unit().multiply(randomDist);
       }
 
-      start = start.add(velocity)
+      start = start.add(velocity);
 
-      points.push([start.x, start.y]);
+      points.push([Math.round(start.x), Math.round(start.y)]);
       done = start.distanceTo(end) < 5;
     }
+
+    // make sure we land cleanly at the end;
+    points.push([end.x, end.y]);
     return points;
   }
 }

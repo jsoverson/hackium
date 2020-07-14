@@ -16,11 +16,9 @@ describe('CLI', function () {
   let server: TestServer;
 
   before(async () => {
-    server = await start(__dirname, 'server_root');
+    server = await start(__dirname, '_server_root');
     dir = '/tmp/randomDir' + Math.random();
-    baseArgs = `--url="${server.url(
-      'index.html',
-    )}" --pwd="${__dirname}" --userDataDir=${dir}`;
+    baseArgs = `--url="${server.url('index.html')}" --pwd="${__dirname}" --userDataDir=${dir}`;
   });
 
   after(async () => {
@@ -43,9 +41,7 @@ describe('CLI', function () {
   });
 
   it('Should inject evaluateOnNewDocument scripts', async () => {
-    instance = new Hackium(
-      getArgs(`${baseArgs} --inject fixtures/global-var.js`),
-    );
+    instance = new Hackium(getArgs(`${baseArgs} --inject _fixtures/global-var.js`));
     const browser = await instance.cliBehavior();
     const [page] = await browser.pages();
     const globalValue = await page.evaluate('window.globalVar');
@@ -53,7 +49,7 @@ describe('CLI', function () {
   });
 
   it('Should intercept scripts', async () => {
-    instance = new Hackium(getArgs(`${baseArgs} --i fixtures/interceptor.js`));
+    instance = new Hackium(getArgs(`${baseArgs} --i _fixtures/interceptor.js`));
     const browser = await instance.cliBehavior();
     const [page] = await browser.pages();
     const value = await page.evaluate('window.interceptedVal');
@@ -88,18 +84,12 @@ describe('CLI', function () {
   });
 
   xit('Should watch for and apply changes on a reload', async () => {
-    const origPath = path.join(__dirname, 'fixtures', 'interceptor.js');
-    const tempPath = path.join(__dirname, 'fixtures', 'interceptorTemp.js');
+    const origPath = path.join(__dirname, '_fixtures', 'interceptor.js');
+    const tempPath = path.join(__dirname, '_fixtures', 'interceptorTemp.js');
     const origSrc = await fsp.readFile(origPath, 'utf8');
 
-    await fsp.writeFile(
-      tempPath,
-      origSrc.replace('interceptedValue', 'interceptedValTemp'),
-      'utf8',
-    );
-    instance = new Hackium(
-      getArgs(`${baseArgs} --i fixtures/interceptorTemp.js -w`),
-    );
+    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValTemp'), 'utf8');
+    instance = new Hackium(getArgs(`${baseArgs} --i _fixtures/interceptorTemp.js -w`));
     const browser = await instance.cliBehavior();
     let [page] = await browser.pages();
 
@@ -108,11 +98,7 @@ describe('CLI', function () {
     let value = await page.evaluate('window.interceptedVal');
     expect(value).to.equal('interceptedValTemp');
 
-    await fsp.writeFile(
-      tempPath,
-      origSrc.replace('interceptedValue', 'interceptedValHotload'),
-      'utf8',
-    );
+    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValHotload'), 'utf8');
     await page.reload();
 
     value = await page.evaluate('window.interceptedVal');
@@ -122,18 +108,12 @@ describe('CLI', function () {
   });
 
   xit('Should watch for and apply changes on a new tab', async () => {
-    const origPath = path.join(__dirname, 'fixtures', 'interceptor.js');
-    const tempPath = path.join(__dirname, 'fixtures', 'interceptorTemp.js');
+    const origPath = path.join(__dirname, '_fixtures', 'interceptor.js');
+    const tempPath = path.join(__dirname, '_fixtures', 'interceptorTemp.js');
     const origSrc = await fsp.readFile(origPath, 'utf8');
 
-    await fsp.writeFile(
-      tempPath,
-      origSrc.replace('interceptedValue', 'interceptedValTemp'),
-      'utf8',
-    );
-    instance = new Hackium(
-      getArgs(`${baseArgs} --i fixtures/interceptorTemp.js -w`),
-    );
+    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValTemp'), 'utf8');
+    instance = new Hackium(getArgs(`${baseArgs} --i _fixtures/interceptorTemp.js -w`));
     const browser = await instance.cliBehavior();
     let [page] = await browser.pages();
 
@@ -142,11 +122,7 @@ describe('CLI', function () {
     let value = await page.evaluate('window.interceptedVal');
     expect(value).equal('interceptedValTemp');
 
-    await fsp.writeFile(
-      tempPath,
-      origSrc.replace('interceptedValue', 'interceptedValHotload'),
-      'utf8',
-    );
+    await fsp.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValHotload'), 'utf8');
     const newPage = await instance.getBrowser().newPage();
     await page.close();
     await newPage.goto(server.url());
@@ -158,19 +134,14 @@ describe('CLI', function () {
   });
 
   it('Should run hackium scripts', async () => {
-    const scriptPath = path.join('.', 'fixtures', 'script.js');
+    const scriptPath = path.join('.', '_fixtures', 'script.js');
 
-    instance = new Hackium(
-      getArgs(`${baseArgs} -e ${scriptPath} -- ${server.url('two.html')}`),
-    );
+    instance = new Hackium(getArgs(`${baseArgs} -e ${scriptPath} -- ${server.url('two.html')}`));
     const browser = await instance.cliBehavior();
     const [pageOrig, pageNew] = await browser.pages();
 
     const clicksEl = await pageOrig.$('#clicks');
-    const numClicks = await pageOrig.evaluate(
-      (clicksEl: HTMLElement) => clicksEl.innerHTML,
-      clicksEl,
-    );
+    const numClicks = await pageOrig.evaluate((clicksEl: HTMLElement) => clicksEl.innerHTML, clicksEl);
 
     expect(numClicks).to.equal('2');
 
@@ -178,10 +149,7 @@ describe('CLI', function () {
     expect(url).to.match(/two.html$/);
 
     const bodyEl = await pageNew.$('body');
-    const body = await pageNew.evaluate(
-      (bodyEl: HTMLElement) => bodyEl.innerHTML,
-      bodyEl,
-    );
-    expect(body).to.equal(require('./fixtures/module'));
+    const body = await pageNew.evaluate((bodyEl: HTMLElement) => bodyEl.innerHTML, bodyEl);
+    expect(body).to.equal(require('./_fixtures/module'));
   });
 });

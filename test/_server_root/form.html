@@ -1,0 +1,24 @@
+<html>
+  <head>
+    <title>Page with forms</title>
+  </head>
+
+  <body>
+    <h1>Signup</h1>
+    <div>
+      <div>
+        <div><label>Username:</label><input type="text" name="user" /></div>
+        <div><label>Password:</label><input type="password" name="password" /></div>
+        <div>
+          <button>Submit</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      let buttonClicks = 0;
+      document.querySelector('button').addEventListener('click', () => {
+        buttonClicks++;
+      });
+    </script>
+  </body>
+</html>

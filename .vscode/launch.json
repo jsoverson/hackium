@@ -8,13 +8,9 @@
       "type": "node",
       "request": "launch",
       "name": "Launch Program",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "program": "${workspaceFolder}/src/cli.ts",
-      "outFiles": [
-        "${workspaceFolder}/**/*.js"
-      ]
+      "outFiles": ["${workspaceFolder}/**/*.js"]
     },
     {
       "name": "Debug Mocha Tests",
@@ -22,9 +18,7 @@
       "request": "attach",
       "port": 9229,
       "protocol": "inspector",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "timeout": 5000,
       "stopOnEntry": false
     }
