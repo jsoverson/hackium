@@ -5,14 +5,14 @@ import path from 'path';
 import Hackium from '../src';
 import { Arguments } from '../src/arguments';
 import { _runCli } from '../src/cli';
-import { read, resolve } from '../src/util/file';
+import { read, resolve, write, remove } from '../src/util/file';
 import { delay } from '../src/util/promises';
-import { getArgs } from './helper';
+import { debug, getArgs } from './helper';
 
 var stdin = require('mock-stdin').stdin();
 
-describe('cliBehavior()', function () {
-  this.timeout(600000);
+describe('cli', function () {
+  this.timeout(6000);
   let dir = '/nonexistant';
   let baseArgs = '';
   let instance: Hackium | undefined;
@@ -86,54 +86,80 @@ describe('cliBehavior()', function () {
     expect(instance.config.pwd).equal(process.cwd());
   });
 
-  xit('Should watch for and apply changes on a reload', async () => {
-    const origPath = path.join(__dirname, '_fixtures', 'interceptor.js');
-    const tempPath = path.join(__dirname, '_fixtures', 'interceptorTemp.js');
-    const origSrc = await fs.readFile(origPath, 'utf8');
+  it('Should watch for and apply changes to injections on a reload', async () => {
+    const tempPath = resolve(['_fixtures', 'global-var-temp.js'], __dirname);
+    const origSrc = await read(['_fixtures', 'global-var.js'], __dirname);
 
-    await fs.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValTemp'), 'utf8');
+    await write(tempPath, origSrc);
+    instance = new Hackium(getArgs(`${baseArgs} --inject _fixtures/global-var-temp.js -w`));
+    const browser = await instance.cliBehavior();
+
+    let [page] = await browser.pages();
+    await page.setCacheEnabled(false);
+    let globalValue = await page.evaluate('window.globalVar');
+    expect(globalValue).to.equal('globalVar');
+
+    await write(tempPath, origSrc.replace(/globalVar/g, 'hotloadVar'));
+    const newPage = await instance.getBrowser().newPage();
+    await page.close();
+    debug('loading page in new tab');
+    await newPage.goto(server.url('index.html'));
+
+    globalValue = await newPage.evaluate('window.hotloadVar');
+    expect(globalValue).to.equal('hotloadVar');
+
+    await remove(tempPath);
+  });
+
+  it('Should watch for and apply changes to interceptors on a reload', async () => {
+    const tempPath = resolve(['_fixtures', 'interceptorTemp.js'], __dirname);
+    const origSrc = await read(['_fixtures', 'interceptor.js'], __dirname);
+
+    await write(tempPath, origSrc.replace('interceptedValue', 'interceptedValTemp'));
     instance = new Hackium(getArgs(`${baseArgs} --i _fixtures/interceptorTemp.js -w`));
     const browser = await instance.cliBehavior();
+
     let [page] = await browser.pages();
-
-    page.setCacheEnabled(false);
-
+    await page.setCacheEnabled(false);
     let value = await page.evaluate('window.interceptedVal');
     expect(value).to.equal('interceptedValTemp');
 
-    await fs.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValHotload'), 'utf8');
+    await write(tempPath, origSrc.replace('interceptedValue', 'interceptedValHotload'));
+    // this is a race but so is life
+    await delay(100);
+    debug('reloading');
     await page.reload();
 
     value = await page.evaluate('window.interceptedVal');
     expect(value).to.equal('interceptedValHotload');
 
-    await fs.unlink(tempPath);
+    await remove(tempPath);
   });
 
-  xit('Should watch for and apply changes on a new tab', async () => {
-    const origPath = path.join(__dirname, '_fixtures', 'interceptor.js');
-    const tempPath = path.join(__dirname, '_fixtures', 'interceptorTemp.js');
-    const origSrc = await fs.readFile(origPath, 'utf8');
+  it('Should watch for and apply changes to interceptors on a new tab', async () => {
+    const tempPath = resolve(['_fixtures', 'interceptorTemp.js'], __dirname);
+    const origSrc = await read(['_fixtures', 'interceptor.js'], __dirname);
 
-    await fs.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValTemp'), 'utf8');
+    await write(tempPath, origSrc.replace('interceptedValue', 'interceptedValTemp'));
     instance = new Hackium(getArgs(`${baseArgs} --i _fixtures/interceptorTemp.js -w`));
     const browser = await instance.cliBehavior();
     let [page] = await browser.pages();
 
-    page.setCacheEnabled(false);
+    await page.setCacheEnabled(false);
 
     let value = await page.evaluate('window.interceptedVal');
-    expect(value).equal('interceptedValTemp');
+    expect(value).to.equal('interceptedValTemp');
 
-    await fs.writeFile(tempPath, origSrc.replace('interceptedValue', 'interceptedValHotload'), 'utf8');
+    await write(tempPath, origSrc.replace('interceptedValue', 'interceptedValHotload'));
     const newPage = await instance.getBrowser().newPage();
     await page.close();
-    await newPage.goto(server.url());
+    debug('loading page in new tab');
+    await newPage.goto(server.url('index.html'));
 
     value = await newPage.evaluate('window.interceptedVal');
     expect(value).to.equal('interceptedValHotload');
 
-    await fs.unlink(tempPath);
+    await remove(tempPath);
   });
 
   it('Should run hackium scripts', async () => {

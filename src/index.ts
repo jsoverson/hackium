@@ -77,8 +77,8 @@ class Hackium extends EventEmitter {
     this.log.debug(this.config);
 
     HackiumPage.hijackCreate({
-      interceptors: this.config.interceptor,
-      injections: this.config.inject,
+      interceptorFiles: this.config.interceptor,
+      injectionFiles: this.config.inject,
       pwd: this.config.pwd,
       watch: this.config.watch,
     });

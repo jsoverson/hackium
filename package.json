@@ -27,6 +27,7 @@
   "license": "ISC",
   "dependencies": {
     "chalk": "^4.0.0",
+    "chokidar": "^3.4.0",
     "d3-ease": "^1.0.6",
     "debug": "^4.1.1",
     "devtools-protocol": "0.0.777489",
@@ -45,6 +46,7 @@
   "devDependencies": {
     "@jsoverson/test-server": "^1.1.1",
     "@types/chai": "^4.2.11",
+    "@types/chokidar": "^2.1.3",
     "@types/d3-ease": "^1.0.9",
     "@types/debug": "^4.1.5",
     "@types/find-root": "^1.1.1",

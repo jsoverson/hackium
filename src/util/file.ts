@@ -1,5 +1,9 @@
 import path from 'path';
 import { promises as fs } from 'fs';
+import chokidar from 'chokidar';
+import DEBUG from 'debug';
+
+const debug = DEBUG('hackium:file');
 
 export function resolve(parts: string[], pwd = ''): string {
   const joinedPath = path.join(...parts);
@@ -15,7 +19,31 @@ export function resolve(parts: string[], pwd = ''): string {
   }
 }
 
+export function watch(file: string, callback: Function) {
+  debug('watching %o', file);
+  const watcher = chokidar.watch(file, {
+    disableGlobbing: true,
+  });
+  watcher.on('change', () => {
+    debug('file %o changed', file);
+    callback(file);
+  });
+}
+
 export function read(parts: string | string[], pwd = '') {
-  if (Array.isArray(parts)) return fs.readFile(resolve(parts, pwd), 'utf-8');
-  return fs.readFile(parts, 'utf-8');
+  const file = Array.isArray(parts) ? resolve(parts, pwd) : parts;
+  debug('reading %o', file);
+  return fs.readFile(file, 'utf-8');
+}
+
+export function write(parts: string | string[], contents: string, pwd = '') {
+  const file = Array.isArray(parts) ? resolve(parts, pwd) : parts;
+  debug('writing %o bytes to %o', contents.length, file);
+  return fs.writeFile(file, contents);
+}
+
+export function remove(parts: string | string[], pwd = '') {
+  const file = Array.isArray(parts) ? resolve(parts, pwd) : parts;
+  debug('deleting %o', file);
+  return fs.unlink(file);
 }

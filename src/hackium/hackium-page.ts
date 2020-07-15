@@ -4,22 +4,23 @@ import findRoot from 'find-root';
 import { promises as fs } from 'fs';
 import importFresh from 'import-fresh';
 import path from 'path';
-import { intercept, Interceptor } from 'puppeteer-interceptor';
+import { intercept, Interceptor, InterceptionHandler } from 'puppeteer-interceptor';
 import { CDPSession } from 'puppeteer/lib/Connection';
 import { HTTPResponse } from 'puppeteer/lib/HTTPResponse';
 import { PuppeteerLifeCycleEvent } from 'puppeteer/lib/LifecycleWatcher';
 import { Page } from 'puppeteer/lib/Page';
 import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
 import { Target } from 'puppeteer/lib/Target';
-import { promisify } from 'util';
 import { HackiumClientEvent } from '../events';
+import { strings } from '../strings';
 import Logger from '../util/logger';
-import { waterfallMap, onlySettled } from '../util/promises';
+import { onlySettled, waterfallMap } from '../util/promises';
+import { renderTemplate } from '../util/template';
 import { HackiumBrowser } from './hackium-browser';
 import { HackiumBrowserContext } from './hackium-browser-context';
 import { HackiumKeyboard, HackiumMouse } from './hackium-input';
-import { strings } from '../strings';
-import { renderTemplate } from '../util/template';
+import { resolve, watch, read } from '../util/file';
+import chokidar from 'chokidar';
 
 interface WaitForOptions {
   timeout?: number;
@@ -27,8 +28,8 @@ interface WaitForOptions {
 }
 
 export interface PageInstrumentationConfig {
-  injections: string[];
-  interceptors: string[];
+  injectionFiles: string[];
+  interceptorFiles: string[];
   watch: boolean;
   pwd: string;
 }
@@ -36,21 +37,18 @@ export interface PageInstrumentationConfig {
 export interface Interceptor {
   intercept: Protocol.Fetch.RequestPattern[];
   interceptor: InterceptorSignature;
+  handler?: InterceptionHandler;
 }
 
-type InterceptorSignature = (
-  hackium: HackiumBrowser,
-  evt: Interceptor.OnResponseReceivedEvent,
-  debug: Debugger,
-) => any;
+type InterceptorSignature = (hackium: HackiumBrowser, evt: Interceptor.OnResponseReceivedEvent, debug: Debugger) => any;
 
 export class HackiumPage extends Page {
   log = new Logger('hackium:page');
   clientLoaded = false;
   queuedActions: (() => void | Promise<void>)[] = [];
   instrumentationConfig: PageInstrumentationConfig = {
-    injections: [],
-    interceptors: [],
+    injectionFiles: [],
+    interceptorFiles: [],
     watch: false,
     pwd: process.env.PWD || '/tmp',
   };
@@ -58,9 +56,7 @@ export class HackiumPage extends Page {
   _hkeyboard: HackiumKeyboard;
   private cachedInterceptors: Interceptor[] = [];
   private cachedInjections: string[] = [];
-  private defaultInjections = [
-    path.join(findRoot(__dirname), 'client', 'hackium.js'),
-  ];
+  private defaultInjections = [path.join(findRoot(__dirname), 'client', 'hackium.js')];
 
   constructor(client: CDPSession, target: Target, ignoreHTTPSErrors: boolean) {
     super(client, target, ignoreHTTPSErrors);
@@ -111,14 +107,8 @@ export class HackiumPage extends Page {
     }
   }
 
-  evaluateNowAndOnNewDocument(
-    fn: Function | string,
-    ...args: unknown[]
-  ): Promise<void> {
-    return Promise.all([
-      this.evaluate(fn, ...args),
-      this.evaluateOnNewDocument(fn, ...args),
-    ])
+  evaluateNowAndOnNewDocument(fn: Function | string, ...args: unknown[]): Promise<void> {
+    return Promise.all([this.evaluate(fn, ...args), this.evaluateOnNewDocument(fn, ...args)])
       .catch((e) => {
         this.log.debug(e);
       })
@@ -134,10 +124,7 @@ export class HackiumPage extends Page {
   }
 
   // Have to override this due to a Puppeteer@4 type bug. Should be able to remove soon
-  async goto(
-    url: string,
-    options?: WaitForOptions & { referer?: string },
-  ): Promise<HTTPResponse> {
+  async goto(url: string, options?: WaitForOptions & { referer?: string }): Promise<HTTPResponse> {
     return super.goto(url, options || {});
   }
 
@@ -149,51 +136,33 @@ export class HackiumPage extends Page {
     return this._hkeyboard;
   }
 
-  private async instrumentSelf(
-    config: PageInstrumentationConfig = this.instrumentationConfig,
-  ) {
+  private async instrumentSelf(config: PageInstrumentationConfig = this.instrumentationConfig) {
     this.instrumentationConfig = config;
     this.log.debug(`instrumenting page %o with config %o`, this.url(), config);
 
-    await this.exposeFunction(
-      strings.get('clienteventhandler'),
-      (data: any) => {
-        const name = data.name;
-        this.log.debug(
-          `Received event '%o' from client with data %o`,
-          name,
-          data,
-        );
-        this.emit(`hackiumclient:${name}`, new HackiumClientEvent(name, data));
-      },
-    );
+    await this.exposeFunction(strings.get('clienteventhandler'), (data: any) => {
+      const name = data.name;
+      this.log.debug(`Received event '%o' from client with data %o`, name, data);
+      this.emit(`hackiumclient:${name}`, new HackiumClientEvent(name, data));
+    });
 
     this.on('hackiumclient:onClientLoaded', (e: HackiumClientEvent) => {
       this.clientLoaded = true;
-      this.log.debug(
-        `client loaded, running %o queued actions`,
-        this.queuedActions.length,
-      );
-      waterfallMap(
-        this.queuedActions,
-        async (action: () => void | Promise<void>, i: number) => {
-          return await action();
-        },
-      );
+      this.log.debug(`client loaded, running %o queued actions`, this.queuedActions.length);
+      waterfallMap(this.queuedActions, async (action: () => void | Promise<void>, i: number) => {
+        return await action();
+      });
     });
 
     this.on('hackiumclient:pageActivated', (e: HackiumClientEvent) => {
       this.browser().setActivePage(this);
     });
 
-    if (this.instrumentationConfig.injections) {
+    if (this.instrumentationConfig.injectionFiles) {
       await this.loadInjections();
     }
 
-    this.log.debug(
-      `adding %o scripts to evaluate on every load`,
-      this.cachedInjections.length,
-    );
+    this.log.debug(`adding %o scripts to evaluate on every load`, this.cachedInjections.length);
     for (let i = 0; i < this.cachedInjections.length; i++) {
       await this.evaluateNowAndOnNewDocument(this.cachedInjections[i]);
     }
@@ -203,43 +172,41 @@ export class HackiumPage extends Page {
 
   private registerInterceptionRequests(interceptors: Interceptor[]) {
     const browser = this.browserContext().browser();
-    interceptors.forEach((interceptor) => {
-      this.log.debug(
-        `Registering interceptor for pattern %o`,
-        interceptor.intercept,
-      );
-      intercept(this, interceptor.intercept, {
+    interceptors.forEach(async (interceptor) => {
+      if (interceptor.handler) {
+        this.log.debug('skipped re-registering interception handler for %o', interceptor.intercept);
+        return;
+      }
+      this.log.debug(`Registering interceptor for pattern %o`, interceptor.intercept);
+      const handler = await intercept(this, interceptor.intercept, {
         onResponseReceived: (evt: Interceptor.OnResponseReceivedEvent) => {
           this.log.debug(`Intercepted response for URL %o`, evt.request.url);
-          // if (this.instrumentationConfig.watch) this.loadInterceptors();
           let response = evt.response;
           if (response) evt.response = response;
-          return interceptor.interceptor(
-            browser,
-            evt,
-            DEBUG('hackium:interceptor'),
-          );
+          return interceptor.interceptor(browser, evt, DEBUG('hackium:interceptor'));
         },
       });
+      interceptor.handler = handler;
     });
   }
 
   private loadInterceptors() {
     this.cachedInterceptors = [];
-    this.log.debug(
-      `loading: %o interceptor modules`,
-      this.instrumentationConfig.interceptors.length,
-    );
-    this.instrumentationConfig.interceptors.forEach((modulePath) => {
+    this.log.debug(`loading: %o interceptor modules`, this.instrumentationConfig.interceptorFiles.length);
+    this.instrumentationConfig.interceptorFiles.forEach((modulePath) => {
       try {
-        const interceptorPath = path.join(
-          this.instrumentationConfig.pwd,
-          modulePath,
-        );
+        const interceptorPath = resolve([modulePath], this.instrumentationConfig.pwd);
+        const interceptor = importFresh(interceptorPath) as Interceptor;
+        if (this.instrumentationConfig.watch) {
+          watch(interceptorPath, (file: string) => {
+            this.log.debug('interceptor modified, disabling ');
+            if (interceptor.handler) interceptor.handler.disable();
+            const reloadedInterceptor = importFresh(interceptorPath) as Interceptor;
+            this.addInterceptor(reloadedInterceptor);
+          });
+        }
         this.log.debug(`Reading interceptor module from %o`, interceptorPath);
-        this.cachedInterceptors.push(
-          importFresh(interceptorPath) as Interceptor,
-        );
+        this.cachedInterceptors.push(interceptor);
       } catch (e) {
         this.log.warn(`Could not load interceptor: %o`, e.message);
       }
@@ -248,22 +215,27 @@ export class HackiumPage extends Page {
 
   private async loadInjections() {
     this.cachedInjections = [];
-    const files = this.defaultInjections.concat(
-      this.instrumentationConfig.injections,
-    );
+    const files = this.defaultInjections.concat(this.instrumentationConfig.injectionFiles);
     this.log.debug(
       `loading: %o modules to inject before page load (%o default, %o user) `,
       files.length,
       this.defaultInjections.length,
-      this.instrumentationConfig.injections.length,
+      this.instrumentationConfig.injectionFiles.length,
     );
     const injections = await onlySettled(
       files.map((f) => {
-        const location = f.startsWith(path.sep)
-          ? f
-          : path.join(this.instrumentationConfig.pwd, f);
+        const location = resolve([f], this.instrumentationConfig.pwd);
         this.log.debug(`reading %o (originally %o)`, location, f);
-        return fs.readFile(location, 'utf-8').then(renderTemplate);
+        // turns out puppeteer doesn't expose the Script identifier on evaluateOnNewDoc
+        // so watching and reloading in the current page may be a PITA.
+        // if (this.instrumentationConfig.watch) {
+        //   watch(f, async (file: string) => {
+        //     this.log.debug('injector modified, reloading');
+        //     const reloadedInterceptor = await read(location).then(renderTemplate);
+        //     // remove old script and inject new script
+        //   });
+        // }
+        return read(location).then(renderTemplate);
       }),
     );
     this.log.debug(`successfully read %o files`, injections.length);
