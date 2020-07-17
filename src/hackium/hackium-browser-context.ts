@@ -23,17 +23,11 @@ export class HackiumBrowserContext extends BrowserContext {
     return this.__browser._createPageInContext(this.id) as Promise<HackiumPage>;
   }
   async pages(): Promise<HackiumPage[]> {
-    console.log('mine');
-    const targets = this.targets();
-    const targetsThatArePages = targets.filter((target) => target.type() === 'page');
-    const promisesOfPages = targetsThatArePages.map((target) => target.page() as Promise<HackiumPage>);
-    const pages = await Promise.all(promisesOfPages);
-
-    // const pages = await Promise.all(
-    //   this.targets()
-    //     .filter((target) => target.type() === 'page')
-    //     .map((target) => target.page() as Promise<HackiumPage>),
-    // );
+    const pages = await Promise.all(
+      this.targets()
+        .filter((target) => target.type() === 'page')
+        .map((target) => target.page() as Promise<HackiumPage>),
+    );
     return pages.filter((page) => !!page);
   }
 }
