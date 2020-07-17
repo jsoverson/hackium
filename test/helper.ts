@@ -1,9 +1,7 @@
-import yargs from 'yargs';
 import DEBUG from 'debug';
-
+import yargs from 'yargs';
+import { Arguments, definition } from '../src/arguments';
 export const debug = DEBUG('hackium:test');
-
-import { definition, Arguments } from '../src/arguments';
 
 export function getArgs(argv: string): Arguments {
   debug('simulating arguments %o', argv);

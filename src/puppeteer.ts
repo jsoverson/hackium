@@ -1,12 +1,6 @@
-import { Puppeteer } from 'puppeteer/lib/Puppeteer';
-import findRoot from 'find-root';
-import path from 'path';
+import { Puppeteer } from 'puppeteer/lib/cjs/common/Puppeteer';
+import { initializePuppeteer } from 'puppeteer/lib/cjs/initialize';
 
-import { initializePuppeteer } from 'puppeteer/lib/index';
-
-const puppeteer = initializePuppeteer({
-  packageJson: require(path.join(findRoot(require.resolve('puppeteer')), 'package.json')),
-  rootDirectory: findRoot(require.resolve('puppeteer')),
-});
+const puppeteer = initializePuppeteer('puppeteer');
 
 export default puppeteer as Puppeteer;

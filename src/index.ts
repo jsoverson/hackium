@@ -4,10 +4,10 @@ import findRoot from 'find-root';
 import { createRequire } from 'module';
 import path from 'path';
 import { mergeLaunchOptions } from 'puppeteer-extensionbridge';
-import { Browser } from 'puppeteer/lib/Browser';
-import { Connection } from 'puppeteer/lib/Connection';
-import { BrowserOptions, ChromeArgOptions, LaunchOptions } from 'puppeteer/lib/launcher/LaunchOptions';
-import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
+import { Browser } from 'puppeteer/lib/cjs/common/Browser';
+import { Connection } from 'puppeteer/lib/cjs/common/Connection';
+import { BrowserOptions, ChromeArgOptions, LaunchOptions } from 'puppeteer/lib/cjs/node/LaunchOptions';
+import { Viewport } from 'puppeteer/lib/cjs/common/PuppeteerViewport';
 import vm from 'vm';
 import { Arguments, ArgumentsWithDefaults, defaultArguments } from './arguments';
 import { BrowserCloseCallback, HackiumBrowser } from './hackium/hackium-browser';
@@ -19,11 +19,11 @@ import { waterfallMap } from './util/promises';
 
 export { patterns } from 'puppeteer-interceptor';
 
-declare module 'puppeteer/lib/Launcher' {
-  interface ChromeLauncher {
-    launch(options: LaunchOptions & ChromeArgOptions & BrowserOptions): Promise<HackiumBrowser>;
-  }
-}
+// declare module 'puppeteer/lib/cjs/node/Launcher' {
+//   interface ChromeLauncher {
+//     launch(options: LaunchOptions & ChromeArgOptions & BrowserOptions): Promise<HackiumBrowser>;
+//   }
+// }
 
 type PuppeteerLaunchOptions = LaunchOptions & ChromeArgOptions & BrowserOptions;
 
@@ -119,7 +119,7 @@ class Hackium extends EventEmitter {
   }
 
   async launch(options: LaunchOptions = {}) {
-    const browser = (await puppeteer.launch(mergeLaunchOptions(Object.assign(options, this.launchOptions)))) as HackiumBrowser;
+    const browser = ((await puppeteer.launch(mergeLaunchOptions(Object.assign(options, this.launchOptions)))) as unknown) as HackiumBrowser;
     await browser.onInitialization();
 
     return (this.browser = browser);

@@ -61,6 +61,7 @@ describe('cli', function () {
 
   it('Should create userDataDir', async () => {
     instance = new Hackium(getArgs(`${baseArgs}`));
+    process.env.FOO = 'T';
     await instance.cliBehavior();
     const stat = await fs.stat(dir);
     expect(stat.isDirectory()).to.be.true;
@@ -170,7 +171,7 @@ describe('cli', function () {
     const [pageOrig, pageNew] = await browser.pages();
 
     const clicksEl = await pageOrig.$('#clicks');
-    const numClicks = await pageOrig.evaluate((clicksEl: HTMLElement) => clicksEl.innerHTML, clicksEl);
+    const numClicks = await pageOrig.evaluate((clicksEl: any) => clicksEl.innerHTML, clicksEl);
 
     expect(numClicks).to.equal('2');
 
@@ -178,7 +179,7 @@ describe('cli', function () {
     expect(url).to.match(/two.html$/);
 
     const bodyEl = await pageNew.$('body');
-    const body = await pageNew.evaluate((bodyEl: HTMLElement) => bodyEl.innerHTML, bodyEl);
+    const body = await pageNew.evaluate((bodyEl: any) => bodyEl.innerHTML, bodyEl);
     expect(body).to.equal(require('./_fixtures/module'));
   });
 

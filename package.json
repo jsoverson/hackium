@@ -13,7 +13,7 @@
     "prepublishOnly": "npm run compile",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
     "watch": "tsc -w",
-    "test": "mocha"
+    "test": "mocha --exit"
   },
   "bin": {
     "hackium": "./bin/hackium"
@@ -34,9 +34,9 @@
     "find-root": "^1.1.0",
     "import-fresh": "^3.2.1",
     "inquirer": "^7.2.0",
-    "puppeteer": "^4.0.0",
-    "puppeteer-extensionbridge": "^0.1.1",
-    "puppeteer-interceptor": "^1.1.0",
+    "puppeteer": "^5.1.0",
+    "puppeteer-extensionbridge": "^1.0.0",
+    "puppeteer-interceptor": "^2.0.1",
     "seedrandom": "^3.0.5",
     "shift-parser": "^7.0.3",
     "shift-printer": "^1.0.1",

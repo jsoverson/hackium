@@ -1,6 +1,6 @@
 import origFs from 'fs';
 import path from 'path';
-import { Page } from 'puppeteer/lib/Page';
+import { Page } from 'puppeteer/lib/cjs/common/Page';
 import repl from 'repl';
 import { promisify } from 'util';
 import Hackium from './';

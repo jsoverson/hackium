@@ -1,8 +1,6 @@
+import { start, TestServer } from '@jsoverson/test-server';
 import { expect } from 'chai';
-
 import Hackium from '../../src';
-import { TestServer, start } from '@jsoverson/test-server';
-import { HackiumBrowserContext } from '../../src/hackium/hackium-browser-context';
 import { HackiumBrowser } from '../../src/hackium/hackium-browser';
 
 describe('Input', function () {
@@ -47,7 +45,7 @@ describe('Input', function () {
       const [page] = await browser.pages();
       await page.goto(server.url('idle.html'));
       await page.mouse.idle();
-      const { idleTime, totalTime } = await page.evaluate('({idleTime, totalTime})');
+      const { idleTime, totalTime } = (await page.evaluate('({idleTime, totalTime})')) as { idleTime: number; totalTime: number };
       expect(totalTime).to.be.greaterThan(0);
       expect(idleTime).to.be.greaterThan(0);
       expect(idleTime).to.be.lessThan(totalTime);
@@ -74,7 +72,7 @@ describe('Input', function () {
       const [page] = await browser.pages();
       await page.goto(server.url('idle.html'));
       await page.keyboard.idle();
-      const { idleTime, totalTime } = await page.evaluate('({idleTime, totalTime})');
+      const { idleTime, totalTime } = (await page.evaluate('({idleTime, totalTime})')) as { idleTime: number; totalTime: number };
       expect(totalTime).to.be.greaterThan(0);
       expect(idleTime).to.be.greaterThan(0);
       expect(idleTime).to.be.lessThan(totalTime);

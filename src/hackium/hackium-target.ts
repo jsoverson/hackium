@@ -1,13 +1,14 @@
-import { Target } from 'puppeteer/lib/Target';
-import { BrowserContext } from 'puppeteer/lib/Browser';
-import Protocol from 'puppeteer/lib/protocol';
-import { CDPSession } from 'puppeteer/lib/Connection';
-import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
+import { Target } from 'puppeteer/lib/cjs/common/Target';
+import { BrowserContext } from 'puppeteer/lib/cjs/common/Browser';
+import Protocol from 'devtools-protocol';
+import { CDPSession } from 'puppeteer/lib/cjs/common/Connection';
+import { Viewport } from 'puppeteer/lib/cjs/common/PuppeteerViewport';
 import { HackiumPage } from './hackium-page';
 import Hackium from '..';
 import Logger from '../util/logger';
-import { EventEmitter } from 'puppeteer/lib/EventEmitter';
+import { EventEmitter } from 'puppeteer/lib/cjs/common/EventEmitter';
 import { mixin } from '../util/mixin';
+import { HackiumBrowserContext } from './hackium-browser-context';
 
 export interface HackiumTarget extends Target, EventEmitter {}
 
@@ -20,18 +21,12 @@ export class HackiumTarget extends Target {
 
   constructor(
     targetInfo: Protocol.Target.TargetInfo,
-    browserContext: BrowserContext,
+    browserContext: HackiumBrowserContext,
     sessionFactory: () => Promise<CDPSession>,
     ignoreHTTPSErrors: boolean,
     defaultViewport: Viewport | null,
   ) {
-    super(
-      targetInfo,
-      browserContext,
-      sessionFactory,
-      ignoreHTTPSErrors,
-      defaultViewport,
-    );
+    super(targetInfo, browserContext, sessionFactory, ignoreHTTPSErrors, defaultViewport);
     mixin(this, new EventEmitter());
     this.log.debug('Constructed new target');
   }

@@ -1,7 +1,11 @@
 {
   "mochaExplorer.env": {
     "DEBUG": "hackium*",
-    "NODE_DEBUG": "repl*",
     "MOCHA_EXPLORER_VSCODE": "true"
-  }
+  },
+  "mochaExplorer.exit": true,
+  "mochaExplorer.files": "test/**/*.test.ts",
+  "mochaExplorer.require": "ts-node/register",
+  "mochaExplorer.debuggerConfig": "Debug Mocha Tests",
+  "debug.javascript.usePreview": false
 }

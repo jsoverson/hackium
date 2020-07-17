@@ -3,32 +3,38 @@ import { ChildProcess } from 'child_process';
 import findRoot from 'find-root';
 import path from 'path';
 import { decorateBrowser, ExtensionBridge, NullExtensionBridge } from 'puppeteer-extensionbridge';
-import { Browser } from 'puppeteer/lib/Browser';
-import { Connection } from 'puppeteer/lib/Connection';
-import { Events } from 'puppeteer/lib/Events';
-import { Page } from 'puppeteer/lib/Page';
-import Protocol from 'puppeteer/lib/protocol';
-import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
-import { Target } from 'puppeteer/lib/Target';
+import { Browser, BrowserContext } from 'puppeteer/lib/cjs/common/Browser';
+import { Connection } from 'puppeteer/lib/cjs/common/Connection';
+import { Events } from 'puppeteer/lib/cjs/common/Events';
+import { Page } from 'puppeteer/lib/cjs/common/Page';
+import Protocol from 'devtools-protocol';
+import { Viewport } from 'puppeteer/lib/cjs/common/PuppeteerViewport';
+import { Target } from 'puppeteer/lib/cjs/common/Target';
 import { HackiumPage } from './hackium-page';
 import { HackiumTarget, TargetEmittedEvents } from './hackium-target';
 import Logger from '../util/logger';
+import { HackiumBrowserContext } from './hackium-browser-context';
 
 const newTabTimeout = 500;
 
 export enum HackiumBrowserEmittedEvents {
-  ActivePageChanged = 'activePageChanged'
+  ActivePageChanged = 'activePageChanged',
 }
 
 export type BrowserCloseCallback = () => Promise<void> | void;
 
 export class HackiumBrowser extends Browser {
   log: Logger = new Logger('hackium:browser');
-  activePage?: Page;
+  activePage?: HackiumPage;
   connection: Connection;
   extension: ExtensionBridge = new NullExtensionBridge();
   _targets: Map<string, HackiumTarget> = new Map();
+  __defaultContext: HackiumBrowserContext;
+  __contexts: Map<string, HackiumBrowserContext> = new Map();
+  __ignoreHTTPSErrors: boolean;
+  __defaultViewport?: Viewport;
   newtab = `file://${path.join(findRoot(__dirname), 'pages', 'newtab', 'index.html')}`;
+
   private _initializationPromise: Promise<unknown>;
 
   constructor(
@@ -37,10 +43,23 @@ export class HackiumBrowser extends Browser {
     ignoreHTTPSErrors: boolean,
     defaultViewport?: Viewport,
     process?: ChildProcess,
-    closeCallback?: BrowserCloseCallback
+    closeCallback?: BrowserCloseCallback,
   ) {
     super(connection, contextIds, ignoreHTTPSErrors, defaultViewport, process, closeCallback);
     this.connection = connection;
+    this.__ignoreHTTPSErrors = ignoreHTTPSErrors;
+    this.__defaultViewport = defaultViewport;
+    this.__defaultContext = new HackiumBrowserContext(this.connection, this);
+    this.__contexts = new Map();
+    for (const contextId of contextIds) this.__contexts.set(contextId, new HackiumBrowserContext(this.connection, this, contextId));
+    const listenerCount = this.connection.listenerCount('Target.targetCreated');
+
+    if (listenerCount === 1) {
+      this.connection.removeAllListeners('Target.targetCreated');
+      this.connection.on('Target.targetCreated', this.__targetCreated.bind(this));
+    } else {
+      throw new Error('Need to reimplement how to intercept target creation. Submit a PR with a reproducible test case.');
+    }
     this.log.debug('Hackium browser created');
     this._initializationPromise = this._initialize();
   }
@@ -56,7 +75,7 @@ export class HackiumBrowser extends Browser {
           window.postMessage({owner:'hackium', name:'pageActivated', data:{tabId:${tabId}, windowId:${windowId}}});
         `;
         this.log.debug(`chrome.tabs.onActivated triggered. Calling %o`, code);
-        await this.extension.send('chrome.tabs.executeScript', tabId, { code })
+        await this.extension.send('chrome.tabs.executeScript', tabId, { code });
       });
       await this.extension.addListener('chrome.tabs.onUpdated', async (tabId) => {
         if (tabId === lastActive.tabId) {
@@ -64,7 +83,7 @@ export class HackiumBrowser extends Browser {
             window.postMessage({owner:'hackium', name:'pageActivated', data:{tabId:${tabId}}});
           `;
           this.log.debug(`Active page updated. Calling %o`, code);
-          await this.extension.send('chrome.tabs.executeScript', tabId, { code })
+          await this.extension.send('chrome.tabs.executeScript', tabId, { code });
         }
       });
 
@@ -78,40 +97,62 @@ export class HackiumBrowser extends Browser {
     return this._initializationPromise;
   }
 
-  pages() {
-    return super.pages() as Promise<HackiumPage[]>;
+  async pages() {
+    // const contexts = this.browserContexts();
+    // const pagePromises = contexts.map((context) => context.pages());
+
+    // const contextPages = await Promise.all(pagePromises);
+    const contextPages = await Promise.all(this.browserContexts().map((context) => context.pages()));
+    return contextPages.reduce((acc, x) => acc.concat(x), []);
   }
 
-  newPage(): Promise<HackiumPage> {
-    return super.newPage() as Promise<HackiumPage>;
+  async newPage(): Promise<HackiumPage> {
+    return this.__defaultContext.newPage();
   }
 
-  async _targetCreated(
-    event: Protocol.Target.targetCreatedPayload
-  ): Promise<void> {
+  browserContexts(): HackiumBrowserContext[] {
+    return [this.__defaultContext, ...Array.from(this.__contexts.values())];
+  }
+
+  async createIncognitoBrowserContext(): Promise<HackiumBrowserContext> {
+    const { browserContextId } = await this.connection.send('Target.createBrowserContext');
+    const context = new HackiumBrowserContext(this.connection, this, browserContextId);
+    this.__contexts.set(browserContextId, context);
+    return context;
+  }
+
+  async _disposeContext(contextId?: string): Promise<void> {
+    if (contextId) {
+      await this.connection.send('Target.disposeBrowserContext', {
+        browserContextId: contextId,
+      });
+      this.__contexts.delete(contextId);
+    }
+  }
+
+  defaultBrowserContext(): HackiumBrowserContext {
+    return this.__defaultContext;
+  }
+
+  async __targetCreated(event: Protocol.Target.TargetCreatedEvent): Promise<void> {
     const targetInfo = event.targetInfo;
     const { browserContextId } = targetInfo;
+
     const context =
-      browserContextId && this._contexts.has(browserContextId)
-        ? this._contexts.get(browserContextId)
-        : this._defaultContext;
+      browserContextId && this.__contexts.has(browserContextId) ? this.__contexts.get(browserContextId) : this.__defaultContext;
 
     assert(context, 'Brower context should not be null or undefined');
     this.log.debug('Creating new target %o', targetInfo);
     const target = new HackiumTarget(
       targetInfo,
       context,
-      () => this._connection.createSession(targetInfo),
-      this._ignoreHTTPSErrors,
-      this._defaultViewport || null
+      () => this.connection.createSession(targetInfo),
+      this.__ignoreHTTPSErrors,
+      this.__defaultViewport || null,
     );
 
-    assert(
-      !this._targets.has(event.targetInfo.targetId),
-      'Target should not exist before targetCreated'
-    );
+    assert(!this._targets.has(event.targetInfo.targetId), 'Target should not exist before targetCreated');
     this._targets.set(event.targetInfo.targetId, target);
-
 
     if (targetInfo.url === 'chrome://newtab/') {
       this.log.debug('New tab opened, waiting for it to navigate to custom newtab');
@@ -148,20 +189,15 @@ export class HackiumBrowser extends Browser {
   async maximize() {
     // hacky way of maximizing. --start-maximized and windowState:maximized don't work on macs. Check later.
     const [page] = await this.pages();
-    const [width, height] = (await page.evaluate(
-      '[screen.availWidth, screen.availHeight];',
-    )) as [number, number];
+    const [width, height] = (await page.evaluate('[screen.availWidth, screen.availHeight];')) as [number, number];
     return this.setWindowBounds(width, height);
   }
 
   async setWindowBounds(width: number, height: number) {
-    const window = (await this.connection.send(
-      'Browser.getWindowForTarget',
-      {
-        // @ts-ignore
-        targetId: page._targetId,
-      },
-    )) as { windowId: number };
+    const window = (await this.connection.send('Browser.getWindowForTarget', {
+      // @ts-ignore
+      targetId: page._targetId,
+    })) as { windowId: number };
     return this.connection.send('Browser.setWindowBounds', {
       windowId: window.windowId,
       bounds: { top: 0, left: 0, width, height },
@@ -193,8 +229,11 @@ export class HackiumBrowser extends Browser {
     });
   }
 
-  setActivePage(page: Page) {
-    if (!page) this.log.debug(`tried to set active page to invalid page object.`);
+  setActivePage(page: HackiumPage) {
+    if (!page) {
+      this.log.debug(`tried to set active page to invalid page object.`);
+      return;
+    }
     this.log.debug(`setting active page with URL %o`, page.url());
     this.activePage = page;
     this.emit(HackiumBrowserEmittedEvents.ActivePageChanged, page);
@@ -204,5 +243,4 @@ export class HackiumBrowser extends Browser {
     if (!this.activePage) throw new Error('no active page in browser instance');
     return this.activePage;
   }
-
 }

@@ -18,7 +18,7 @@
       "request": "attach",
       "port": 9229,
       "protocol": "inspector",
-      "skipFiles": ["<node_internals>/**"],
+      "skipFiles": ["<node_internals>/**/*.js"],
       "timeout": 5000,
       "stopOnEntry": false
     }

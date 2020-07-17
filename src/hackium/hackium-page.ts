@@ -1,26 +1,25 @@
 import DEBUG, { Debugger } from 'debug';
 import Protocol from 'devtools-protocol';
 import findRoot from 'find-root';
-import { promises as fs } from 'fs';
 import importFresh from 'import-fresh';
 import path from 'path';
-import { intercept, Interceptor, InterceptionHandler } from 'puppeteer-interceptor';
-import { CDPSession } from 'puppeteer/lib/Connection';
-import { HTTPResponse } from 'puppeteer/lib/HTTPResponse';
-import { PuppeteerLifeCycleEvent } from 'puppeteer/lib/LifecycleWatcher';
-import { Page } from 'puppeteer/lib/Page';
-import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
-import { Target } from 'puppeteer/lib/Target';
+import { intercept, InterceptionHandler, Interceptor } from 'puppeteer-interceptor';
+import { CDPSession } from 'puppeteer/lib/cjs/common/Connection';
+import { HTTPResponse } from 'puppeteer/lib/cjs/common/HTTPResponse';
+import { PuppeteerLifeCycleEvent } from 'puppeteer/lib/cjs/common/LifecycleWatcher';
+import { Page } from 'puppeteer/lib/cjs/common/Page';
+import { Viewport } from 'puppeteer/lib/cjs/common/PuppeteerViewport';
+import { Target } from 'puppeteer/lib/cjs/common/Target';
 import { HackiumClientEvent } from '../events';
 import { strings } from '../strings';
+import { read, resolve, watch } from '../util/file';
 import Logger from '../util/logger';
 import { onlySettled, waterfallMap } from '../util/promises';
 import { renderTemplate } from '../util/template';
 import { HackiumBrowser } from './hackium-browser';
 import { HackiumBrowserContext } from './hackium-browser-context';
 import { HackiumKeyboard, HackiumMouse } from './hackium-input';
-import { resolve, watch, read } from '../util/file';
-import chokidar from 'chokidar';
+import { EvaluateFn, SerializableOrJSHandle } from 'puppeteer/lib/cjs/common/EvalTypes';
 
 interface WaitForOptions {
   timeout?: number;
@@ -107,7 +106,7 @@ export class HackiumPage extends Page {
     }
   }
 
-  evaluateNowAndOnNewDocument(fn: Function | string, ...args: unknown[]): Promise<void> {
+  evaluateNowAndOnNewDocument(fn: EvaluateFn | string, ...args: SerializableOrJSHandle[]): Promise<void> {
     return Promise.all([this.evaluate(fn, ...args), this.evaluateOnNewDocument(fn, ...args)])
       .catch((e) => {
         this.log.debug(e);

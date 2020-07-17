@@ -1,13 +1,13 @@
-import { CDPSession } from 'puppeteer/lib/Connection';
-import { Keyboard, Mouse, MouseButtonInput } from 'puppeteer/lib/Input';
-import { ElementHandle } from 'puppeteer/lib/JSHandle';
-import { Viewport } from 'puppeteer/lib/PuppeteerViewport';
-import { keyDefinitions, KeyInput } from 'puppeteer/lib/USKeyboardLayout.js';
+import { Keyboard, Mouse, MouseButton, MouseWheelOptions } from 'puppeteer/lib/cjs/common/Input';
+import { ElementHandle } from 'puppeteer/lib/cjs/common/JSHandle';
+import { Viewport } from 'puppeteer/lib/cjs/common/PuppeteerViewport';
+import { keyDefinitions, KeyInput } from 'puppeteer/lib/cjs/common/USKeyboardLayout.js';
 import Logger from '../util/logger';
 import { SimulatedMovement, Vector } from '../util/movement';
 import { waterfallMap } from '../util/promises';
 import { Random } from '../util/random';
 import { HackiumPage } from './hackium-page';
+import { CDPSession } from 'puppeteer/lib/cjs/common/Connection';
 
 export interface Point {
   x: number;
@@ -15,7 +15,7 @@ export interface Point {
 }
 
 interface MouseOptions {
-  button?: MouseButtonInput;
+  button?: MouseButton;
   clickCount?: number;
 }
 
@@ -26,7 +26,7 @@ export enum IdleMouseBehavior {
 
 export class HackiumMouse extends Mouse {
   log = new Logger('hackium:page:mouse');
-  private page: HackiumPage;
+  page: HackiumPage;
   rng = new Random();
 
   minDelay = 75;
@@ -34,25 +34,34 @@ export class HackiumMouse extends Mouse {
   minPause = 500;
   maxPause = 2000;
 
+  __x = this.rng.int(1, 600);
+  __y = this.rng.int(1, 600);
+  __client: CDPSession;
+  __button: MouseButton | 'none' = 'none';
+  __keyboard: Keyboard;
+
   constructor(client: CDPSession, keyboard: Keyboard, page: HackiumPage) {
     super(client, keyboard);
-    this._x = this.rng.int(1, 600);
-    this._y = this.rng.int(1, 600);
+    this.__x = this.rng.int(1, 600);
+    this.__y = this.rng.int(1, 600);
     this.page = page;
+    this.__client = client;
+    this.__keyboard = keyboard;
   }
 
   get x() {
-    return this._x;
+    return this.__x;
   }
 
   get y() {
-    return this._y;
+    return this.__y;
   }
 
   async moveTo(selector: string | ElementHandle) {
     const elementHandle = typeof selector === 'string' ? await this.page.$(selector) : selector;
     if (!elementHandle) throw new Error(`Can not find bounding box of ${selector}`);
     const box = await elementHandle.boundingBox();
+    if (!box) throw new Error(`${selector} has no bounding box to move to`);
     const x = this.rng.int(box.x, box.x + box.width);
     const y = this.rng.int(box.y, box.y + box.height);
     return this.move(x, y);
@@ -80,24 +89,63 @@ export class HackiumMouse extends Mouse {
     });
   }
 
+  async down(options: MouseOptions = {}): Promise<void> {
+    const { button = 'left', clickCount = 1 } = options;
+    this.__button = button;
+    await this.__client.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      button,
+      x: this.__x,
+      y: this.__y,
+      modifiers: this.__keyboard._modifiers,
+      clickCount,
+    });
+  }
+
+  async up(options: MouseOptions = {}): Promise<void> {
+    const { button = 'left', clickCount = 1 } = options;
+    this.__button = 'none';
+    await this.__client.send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased',
+      button,
+      x: this.__x,
+      y: this.__y,
+      modifiers: this.__keyboard._modifiers,
+      clickCount,
+    });
+  }
+
+  async wheel(options: MouseWheelOptions = {}): Promise<void> {
+    const { deltaX = 0, deltaY = 0 } = options;
+    await this.__client.send('Input.dispatchMouseEvent', {
+      type: 'mouseWheel',
+      x: this.__x,
+      y: this.__y,
+      deltaX,
+      deltaY,
+      modifiers: this.__keyboard._modifiers,
+      pointerType: 'mouse',
+    });
+  }
+
   async move(x: number, y: number, options: { steps?: number; duration?: number } = {}): Promise<void> {
     // steps are ignored and included for typing, duration is what matters to us.
     const { duration = Math.random() * 2000 } = options;
 
-    const points = new SimulatedMovement(4, 2, 5).generatePath(new Vector(this._x, this._y), new Vector(x, y));
+    const points = new SimulatedMovement(4, 2, 5).generatePath(new Vector(this.__x, this.__y), new Vector(x, y));
 
     const moves = waterfallMap(points, ([x, y]) =>
-      this._client
+      this.__client
         .send('Input.dispatchMouseEvent', {
           type: 'mouseMoved',
-          button: this._button,
+          button: this.__button,
           x,
           y,
-          modifiers: this._keyboard._modifiers,
+          modifiers: this.__keyboard._modifiers,
         })
         .then(() => {
-          this._x = x;
-          this._y = y;
+          this.__x = x;
+          this.__y = y;
         }),
     );
 
