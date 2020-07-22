@@ -1,6 +1,6 @@
 import path from 'path';
 
-export const defaultSignal = '<default>'
+export const defaultSignal = '<default>';
 
 export class Arguments {
   url?: string;
@@ -16,6 +16,7 @@ export class Arguments {
   watch?: boolean;
   execute?: string[];
   chromeOutput?: boolean;
+  timeout?: number | string;
   // userAgent?: string;
   _?: any[];
 }
@@ -29,11 +30,8 @@ export class ArgumentsWithDefaults extends Arguments {
   interceptor: string[] = [];
   pwd = process.cwd();
   headless = false;
-  userDataDir = path.join(
-    process.env.HOME || process.cwd(),
-    '.hackium',
-    'chromium',
-  );
+  userDataDir = path.join(process.env.HOME || process.cwd(), '.hackium', 'chromium');
+  timeout = 30000;
   devtools = true;
   watch = false;
   execute: string[] = [];
@@ -106,9 +104,14 @@ export const definition = {
     boolean: true,
     default: defaultArguments.watch,
   },
+  timeout: {
+    alias: 't',
+    describe: 'set timeout for Puppeteer',
+    default: defaultArguments.timeout,
+  },
   chromeOutput: {
     describe: 'print Chrome stderr & stdout logging',
     boolean: true,
-    default: defaultArguments.chromeOutput
-  }
+    default: defaultArguments.chromeOutput,
+  },
 };

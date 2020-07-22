@@ -1,19 +1,18 @@
 import assert from 'assert';
 import { ChildProcess } from 'child_process';
+import Protocol from 'devtools-protocol';
 import findRoot from 'find-root';
 import path from 'path';
 import { decorateBrowser, ExtensionBridge, NullExtensionBridge } from 'puppeteer-extensionbridge';
-import { Browser, BrowserContext } from 'puppeteer/lib/cjs/common/Browser';
+import { Browser } from 'puppeteer/lib/cjs/common/Browser';
 import { Connection } from 'puppeteer/lib/cjs/common/Connection';
 import { Events } from 'puppeteer/lib/cjs/common/Events';
-import { Page } from 'puppeteer/lib/cjs/common/Page';
-import Protocol from 'devtools-protocol';
 import { Viewport } from 'puppeteer/lib/cjs/common/PuppeteerViewport';
 import { Target } from 'puppeteer/lib/cjs/common/Target';
-import { HackiumPage } from './hackium-page';
-import { HackiumTarget, TargetEmittedEvents } from './hackium-target';
 import Logger from '../util/logger';
 import { HackiumBrowserContext } from './hackium-browser-context';
+import { HackiumPage } from './hackium-page';
+import { HackiumTarget, TargetEmittedEvents } from './hackium-target';
 
 const newTabTimeout = 500;
 

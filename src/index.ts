@@ -65,7 +65,8 @@ class Hackium extends EventEmitter {
   ];
 
   private launchOptions: PuppeteerLaunchOptions = {
-    devtools: true,
+    devtools: defaultArguments.devtools,
+    timeout: defaultArguments.timeout,
     ignoreDefaultArgs: ['--enable-automation', '--disable-extensions'],
   };
 
@@ -85,6 +86,9 @@ class Hackium extends EventEmitter {
 
     if ('devtools' in this.config) {
       this.launchOptions.devtools = this.config.devtools;
+    }
+    if ('timeout' in this.config) {
+      this.launchOptions.timeout = typeof this.config.timeout === 'string' ? parseInt(this.config.timeout) : this.config.timeout;
     }
 
     setEnv(this.config.env);

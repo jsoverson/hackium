@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import Logger from '../../src/util/logger';
 
 describe('logger', function () {
-  it.only('should format log, warn, and error like debug', async () => {
+  it('should format log, warn, and error like debug', async () => {
     const logger = new Logger('test');
     const info = logger.format('info %o', { a: 1 });
     const warn = logger.format('warn %o', 'foo');
