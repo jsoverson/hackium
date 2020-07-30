@@ -7,5 +7,24 @@
   "mochaExplorer.files": "test/**/*.test.ts",
   "mochaExplorer.require": "ts-node/register",
   "mochaExplorer.debuggerConfig": "Debug Mocha Tests",
-  "debug.javascript.usePreview": false
+  "debug.javascript.usePreview": false,
+  "workbench.colorCustomizations": {
+    "activityBar.activeBackground": "#510909",
+    "activityBar.activeBorder": "#73660d",
+    "activityBar.background": "#510909",
+    "activityBar.foreground": "#e7e7e7",
+    "activityBar.inactiveForeground": "#e7e7e799",
+    "activityBarBadge.background": "#73660d",
+    "activityBarBadge.foreground": "#e7e7e7",
+    "statusBar.background": "#230404",
+    "statusBar.border": "#230404",
+    "statusBar.foreground": "#e7e7e7",
+    "statusBarItem.hoverBackground": "#510909",
+    "titleBar.activeBackground": "#230404",
+    "titleBar.activeForeground": "#e7e7e7",
+    "titleBar.border": "#230404",
+    "titleBar.inactiveBackground": "#23040499",
+    "titleBar.inactiveForeground": "#e7e7e799"
+  },
+  "peacock.color": "#1f0423"
 }
