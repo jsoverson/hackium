@@ -1,7 +1,7 @@
 node_modules
 .DS_Store
 dist/
-theme/Cached Theme.pak
+extensions/theme/Cached\ Theme.pak
 .cache
 .repl_history
 test/fixtures/interceptorTemp.js

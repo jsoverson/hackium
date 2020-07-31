@@ -5,7 +5,7 @@ import path from 'path';
 import Hackium from '../src';
 import { Arguments } from '../src/arguments';
 import { _runCli } from '../src/cli';
-import { read, resolve, write, remove } from '../src/util/file';
+import { read, resolve, write, remove, getRandomDir } from '../src/util/file';
 import { delay } from '../src/util/promises';
 import { debug, getArgs } from './helper';
 
@@ -21,7 +21,7 @@ describe('cli', function () {
 
   before(async () => {
     server = await start(__dirname, '_server_root');
-    dir = '/tmp/randomDir' + Math.random();
+    dir = await getRandomDir();
     baseArgs = `--pwd="${__dirname}" --userDataDir=${dir}`;
     baseUrlArgs = `--url="${server.url('index.html')}" ${baseArgs}`;
   });
