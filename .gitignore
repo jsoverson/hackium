@@ -4,5 +4,5 @@ dist/
 extensions/theme/Cached\ Theme.pak
 .cache
 .repl_history
-test/fixtures/interceptorTemp.js
+test/_fixtures/interceptorTemp.js
 scratch/
