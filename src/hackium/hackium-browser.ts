@@ -32,7 +32,7 @@ export class HackiumBrowser extends Browser {
   __contexts: Map<string, HackiumBrowserContext> = new Map();
   __ignoreHTTPSErrors: boolean;
   __defaultViewport?: Viewport;
-  newtab = `file://${path.join(findRoot(__dirname), 'pages', 'newtab', 'index.html')}`;
+  newtab = `file://${path.join(findRoot(__dirname), 'pages', 'homepage', 'index.html')}`;
 
   private _initializationPromise: Promise<unknown>;
 
