@@ -13,7 +13,7 @@
     "prepublishOnly": "npm run compile",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
     "watch": "tsc -w",
-    "test": "mocha --exit"
+    "test": "mocha -b --exit"
   },
   "bin": {
     "hackium": "./bin/hackium"
@@ -53,6 +53,7 @@
     "@types/inquirer": "^6.5.0",
     "@types/mocha": "^7.0.2",
     "@types/node": "^13.13.2",
+    "@types/rimraf": "^3.0.0",
     "@types/seedrandom": "^2.4.28",
     "@types/serve-handler": "^6.1.0",
     "@types/tween.js": "^18.5.1",

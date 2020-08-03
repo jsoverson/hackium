@@ -67,5 +67,5 @@ main {
   padding: 5px;
   border-radius: 6px;
   font-family: "Lucida Console", Monaco, monospace;
-  font-size: smaller;
+  overflow: auto;
 }

@@ -1,6 +1,6 @@
 import { start, TestServer } from '@jsoverson/test-server';
 import { expect } from 'chai';
-import Hackium from '../../src';
+import { Hackium } from '../../src';
 import { HackiumBrowser } from '../../src/hackium/hackium-browser';
 
 describe('Input', function () {

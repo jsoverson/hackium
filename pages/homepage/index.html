@@ -1,34 +1,96 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Homepage for Hackium" />
+    <title>Hackium</title>
+    <script>
+      (function () {
+        const messages = [];
+        const preloadHandler = (evt) => {
+          const data = event.data;
+          if (!data || data.owner !== 'hackium') return;
+          if (data.name === 'clientLoaded') {
+            console.log('Client loaded on newtab, replaying messages');
+            // Replay messages that were sent before the client was loaded
+            messages.forEach((data) => window.postMessage(data));
+            window.removeEventListener('message', preloadHandler);
+          } else {
+            console.log('Client not loaded yet, queuing');
+            messages.push(evt.data);
+          }
+        };
+        window.addEventListener('message', preloadHandler);
+      })();
+    </script>
+    <link rel="stylesheet" href="./main.css" />
+  </head>
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Homepage for Hackium">
-  <title>Hackium</title>
-  <link rel="stylesheet" href="./main.css">
-</head>
+  <body>
+    <header>
+      <img src="./hackium-logo-full-white.png" alt="Hackium" style="height: 32px;" />
+      <nav>
+        <ul>
+          <li><a href="https://github.com/jsoverson/hackium">Hackium Home</a></li>
+          <li><a href="https://github.com/puppeteer/puppeteer/blob/master/docs/api.md">Puppeteer API</a></li>
+          <li><a href="https://developer.chrome.com/extensions/api_index">Chrome Extension API</a></li>
+          <li><a href="https://chromedevtools.github.io/devtools-protocol/">Chrome DevTools Viewer</a></li>
+        </ul>
+      </nav>
+    </header>
 
-<body>
-  <header>
-    <div class="menu-heading">
-      <h1>Hackium</h1>
-    </div>
-    <nav>
-      <ul>
-        <li><a href="https://github.com/jsoverson/hackium">Hackium Home</a></li>
-        <li><a href="https://github.com/puppeteer/puppeteer/blob/master/docs/api.md">Puppeteer API</a></li>
-        <li><a href="https://developer.chrome.com/extensions/api_index">Chrome Extension API</a></li>
-        <li><a href="https://chromedevtools.github.io/devtools-protocol/">Chrome DevTools Viewer</a></li>
-      </ul>
-    </nav>
-  </header>
+    <main>
+      <div id="output">
+        <pre>
+» REPL context:
 
-  <main>
-    <div id=output>
-      test
-    </div>
-  </main>
-</body>
+page: active page
+browser: browser instance
+cdp: chrome devtools protocol connection
+extension: chrome extension API bridge
 
+» hackium command line usage
+
+Default command: start hackium browser & REPL
+
+Commands:
+  hackium init [file]  Create boilerplate configuration/scripts
+  hackium              Default command: start hackium browser & REPL   [default]
+
+Default Command Options:
+  --version          Show version number                                              [boolean]
+  --help             Show help                                                        [boolean]
+  --headless         start hackium in headless mode                                   [boolean] [default: false]
+  --pwd              root directory to look for support modules                       [default: pwd]
+  --adblock          turn on ad blocker                                               [default: false]
+  --url, -u          starting URL
+  --env              environment variable name/value pairs (e.g. --env MYVAR=value)   [array] [default: []]
+  --inject, -E       script file to inject first on every page                        [array] [default: []]
+  --execute, -e      hackium script to execute                                        [array] [default: []]
+  --interceptor, -i  interceptor module that will handle intercepted responses        [array] [default: []]
+  --userDataDir, -U  Chromium user data directory                                     [string] [default: "~/.hackium/chromium"]
+  --devtools, -d     open devtools automatically on every tab                         [boolean] [default: true]
+  --watch, -w        watch for configuration changes                                  [boolean] [default: false]
+  --timeout, -t      set timeout for Puppeteer                                        [default: 30000]
+  --chromeOutput     print Chrome stderr & stdout logging                             [boolean] [default: false]
+  --config, -c                                                                        [string] [default: ""]
+
+  Init Options:
+  
+  hackium init                initialize a hackium config json
+  hackium init injection      create a sample injection file
+  hackium init interceptor    create a sample interception module
+  hackium init script         create a sample hackium script
+
+  Debug output:
+
+  Set the DEBUG environment variable with a wildcard to print debug logs to the console, e.g.
+
+  $ DEBUG=hackium* hackium
+  
+        </pre>
+      </div>
+    </main>
+  </body>
 </html>

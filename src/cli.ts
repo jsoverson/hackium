@@ -2,15 +2,16 @@ import origFs from 'fs';
 import path from 'path';
 import { Page } from 'puppeteer/lib/cjs/common/Page';
 import repl from 'repl';
+import { Readable, Writable } from 'stream';
 import { promisify } from 'util';
-import Hackium from './';
+import { Hackium } from './';
 import { Arguments, definition } from './arguments';
 import { HackiumBrowserEmittedEvents } from './hackium/hackium-browser';
+import { resolve } from './util/file';
 import Logger from './util/logger';
+import { merge } from './util/object';
 
 import yargs = require('yargs');
-import { resolve } from './util/file';
-import { Readable, Writable } from 'stream';
 
 const log = new Logger('hackium:cli');
 const exists = promisify(origFs.exists);
@@ -22,7 +23,7 @@ export default function runCli() {
     .commandDir('cmds')
     .command(
       '$0',
-      'start hackium',
+      'Default command: start hackium browser & REPL',
       (yargs) => {
         yargs.options(definition).option('config', {
           alias: 'c',
@@ -45,10 +46,12 @@ export interface ReplOptions {
   stdin?: Readable;
 }
 
-export async function _runCli(config: Arguments, replOptions: ReplOptions = {}) {
+export async function _runCli(configFromCommandLine: Arguments, replOptions: ReplOptions = {}) {
   const configFilesToCheck = [...DEFAULT_CONFIG_NAMES];
 
-  if (config.config) configFilesToCheck.unshift(config.config);
+  if (configFromCommandLine.config) configFilesToCheck.unshift(configFromCommandLine.config);
+
+  let config = {};
 
   for (let i = 0; i < configFilesToCheck.length; i++) {
     const fileName = configFilesToCheck[i];
@@ -58,11 +61,12 @@ export async function _runCli(config: Arguments, replOptions: ReplOptions = {}) 
       continue;
     }
     try {
-      config = require(location);
+      const configFromFile = require(location);
       log.info(`using config found at ${location}`);
-      config.pwd = path.dirname(location);
+      configFromFile.pwd = path.dirname(location);
       log.debug(`setting pwd to config dir: ${path.dirname(location)}`);
-      break;
+      config = merge({}, configFromFile, configFromCommandLine);
+      log.debug(`merged with command line arguments`);
     } catch (e) {
       log.error(`error importing configuration:`);
       console.log(e);
@@ -89,9 +93,9 @@ export async function _runCli(config: Arguments, replOptions: ReplOptions = {}) 
         input: replOptions.stdin || process.stdin,
       });
       log.debug('repl started');
-      if (config.pwd) {
+      if (configFromCommandLine.pwd) {
         const setupHistory = promisify(replInstance.setupHistory.bind(replInstance));
-        const replHistoryPath = resolve(['.repl_history'], config.pwd);
+        const replHistoryPath = resolve(['.repl_history'], configFromCommandLine.pwd);
         log.debug('saving repl history at %o', replHistoryPath);
         await setupHistory(replHistoryPath);
       } else {
@@ -100,9 +104,11 @@ export async function _runCli(config: Arguments, replOptions: ReplOptions = {}) 
 
       replInstance.context.hackium = hackium;
       replInstance.context.browser = browser;
-      replInstance.context.cdp = browser.connection;
-      replInstance.context.extensionBridge = browser.extension;
-      replInstance.context.page = browser.activePage;
+      replInstance.context.extension = browser.extension;
+      const page = (replInstance.context.page = browser.activePage);
+      if (page) {
+        replInstance.context.cdp = await page.target().createCDPSession();
+      }
       browser.on(HackiumBrowserEmittedEvents.ActivePageChanged, (page: Page) => {
         log.debug('active page changed');
         replInstance.context.page = page;

@@ -1,12 +1,6 @@
 import DEBUG, { Debugger } from 'debug';
 import chalk from 'chalk';
 
-const { formatArgs } = require('debug');
-
-function format(...args: any) {
-  return args[0] || '';
-}
-
 export default class Logger {
   debug: Debugger;
 

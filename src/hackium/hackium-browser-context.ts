@@ -1,7 +1,7 @@
-import { BrowserContext, Browser } from 'puppeteer/lib/cjs/common/Browser';
+import { BrowserContext } from 'puppeteer/lib/cjs/common/Browser';
+import { Connection } from 'puppeteer/lib/cjs/common/Connection';
 import Logger from '../util/logger';
 import { HackiumBrowser } from './hackium-browser';
-import { Connection } from 'puppeteer/lib/cjs/common/Connection';
 import { HackiumPage } from './hackium-page';
 
 export class HackiumBrowserContext extends BrowserContext {

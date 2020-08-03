@@ -1,4 +1,5 @@
 import path from 'path';
+import { Plugin } from './util/types';
 
 export const defaultSignal = '<default>';
 
@@ -15,6 +16,7 @@ export class Arguments {
   devtools?: boolean;
   watch?: boolean;
   execute?: string[];
+  plugins?: Plugin[];
   chromeOutput?: boolean;
   timeout?: number | string;
   // userAgent?: string;
@@ -35,6 +37,7 @@ export class ArgumentsWithDefaults extends Arguments {
   devtools = true;
   watch = false;
   execute: string[] = [];
+  plugins: Plugin[] = [];
   chromeOutput = false;
   // userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.0 Safari/537.36';
   _: string[] = [];

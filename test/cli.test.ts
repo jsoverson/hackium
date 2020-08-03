@@ -2,12 +2,13 @@ import { start, TestServer } from '@jsoverson/test-server';
 import { expect } from 'chai';
 import { promises as fs } from 'fs';
 import path from 'path';
-import Hackium from '../src';
+import { Hackium } from '../src';
 import { Arguments } from '../src/arguments';
 import { _runCli } from '../src/cli';
 import { read, resolve, write, remove, getRandomDir } from '../src/util/file';
 import { delay } from '../src/util/promises';
 import { debug, getArgs } from './helper';
+import rimraf from 'rimraf';
 
 var stdin = require('mock-stdin').stdin();
 
@@ -21,20 +22,25 @@ describe('cli', function () {
 
   before(async () => {
     server = await start(__dirname, '_server_root');
+  });
+
+  after(async () => {
+    await server.stop();
+  });
+
+  beforeEach(async () => {
     dir = await getRandomDir();
     baseArgs = `--pwd="${__dirname}" --userDataDir=${dir}`;
     baseUrlArgs = `--url="${server.url('index.html')}" ${baseArgs}`;
   });
 
-  after(async () => {
-    await fs.rmdir(dir, { recursive: true });
-    await server.stop();
-  });
-
-  afterEach(async () => {
-    if (instance) {
-      return instance.close();
-    }
+  afterEach((done) => {
+    (instance ? instance.close() : Promise.resolve()).finally(() => {
+      rimraf(dir, (err) => {
+        if (err) done(err);
+        done();
+      });
+    });
   });
 
   it('Should go to a default URL', async () => {
@@ -48,7 +54,7 @@ describe('cli', function () {
   it('Should allow for configurable timeouts', async () => {
     // set a timeout too low for Chrome to launch & use the error in the assertion
     instance = new Hackium(getArgs(`${baseArgs} -t 100`));
-    const error = await instance.cliBehavior().catch((e) => e);
+    const error = await instance.cliBehavior().catch((e: any) => e);
     expect(error.message).to.match(/Timed out/i);
   });
 
@@ -192,40 +198,42 @@ describe('cli', function () {
     expect(body).to.equal(require('./_fixtures/module'));
   });
 
-  describe('REPL', () => {
-    it('should be testable', async () => {
-      const args = getArgs(`${baseUrlArgs}`);
-      const { repl } = await _runCli(args);
-      let didClose = false;
-      repl.on('exit', () => {
-        didClose = true;
-      });
-      repl.write('.exit\n');
-      // yield;
-      return new Promise((resolve, reject) => {
-        setTimeout(() => {
-          expect(didClose).to.be.true;
-          resolve();
-        }, 100);
-      });
+  it('repl should be testable', async () => {
+    const args = getArgs(`${baseUrlArgs}`);
+    const { repl } = await _runCli(args);
+    instance = repl.context.hackium;
+    let didClose = false;
+    repl.on('exit', () => {
+      didClose = true;
     });
-    it('.repl_history should be stored in config.pwd', async () => {
-      if (process.env.MOCHA_EXPLORER_VSCODE) {
-        // This is failing when it's run in VS Code and I can't spend any more time
-        // figuring out why. This env var is set as part of the project settings so
-        // this test is shortcircuited when run in VS Code.
-        return;
-      }
-      const pwd = dir;
-      const args = getArgs(`--pwd="${pwd}" --userDataDir=${dir}`);
-      const { repl } = await _runCli(args, { stdin });
-      stdin.send('/*hello world*/');
-      stdin.send('\n');
-      await delay(100);
-      const replHistoryPath = resolve(['.repl_history'], pwd);
-      const history = await read(replHistoryPath);
-      expect(history).to.equal(`/*hello world*/`);
-      instance = repl.context.browser;
+    repl.write('.exit\n');
+    // yield;
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        expect(didClose).to.be.true;
+        resolve();
+      }, 100);
     });
+  });
+  it('.repl_history should be stored in config.pwd', async () => {
+    if (process.env.MOCHA_EXPLORER_VSCODE) {
+      // This is failing when it's run in VS Code and I can't spend any more time
+      // figuring out why. This env var is set as part of the project settings so
+      // this test is shortcircuited when run in VS Code.
+      console.log('short circuiting');
+      return;
+    }
+    const pwd = dir;
+    const args = getArgs(`--pwd="${pwd}" --userDataDir=${dir}`);
+    const { repl } = await _runCli(args, { stdin });
+    instance = repl.context.hackium;
+    stdin.send('/*hello world*/');
+    stdin.send('\n');
+    await delay(100);
+    console.log(resolve(['.repl_history'], pwd));
+    console.log(dir);
+    const replHistoryPath = resolve(['.repl_history'], pwd);
+    const history = await read(replHistoryPath);
+    expect(history).to.equal(`/*hello world*/`);
   });
 });

@@ -3,7 +3,7 @@ import { Debugger } from 'debug';
 import fs from 'fs';
 import { Interceptor } from 'puppeteer-interceptor';
 import Protocol from 'devtools-protocol';
-import Hackium from '../../src';
+import { Hackium } from '../../src';
 import { HackiumBrowser } from '../../src/hackium/hackium-browser';
 import { start, TestServer } from '@jsoverson/test-server';
 import path from 'path';

@@ -1,7 +1,7 @@
-import { promisify } from "util";
+import { promisify } from 'util';
 import origFs, { promises as fs } from 'fs';
-import path from "path";
-import findRoot from "find-root";
+import path from 'path';
+import findRoot from 'find-root';
 
 const exists = promisify(origFs.exists);
 
@@ -14,7 +14,7 @@ export function readTemplate(name: string) {
   return fs.readFile(path.join(findRoot(__dirname), 'src', 'cmds', 'init', 'templates', name), 'utf-8');
 }
 
-export async function writeTemplate(name: string, to?: string) {
+export async function copyTemplate(name: string, to?: string) {
   await safelyWrite(to || name, await readTemplate(name));
   return name;
 }

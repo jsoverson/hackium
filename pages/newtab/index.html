@@ -1,31 +1,25 @@
 <html>
-<script>
-  (function () {
-    console.log('New tab')
-    const messages = [];
-    const preloadHandler = (evt) => {
-      console.log('Received window message on newtab')
-      console.log(evt);
-      const data = event.data;
-      if (!data || data.owner !== 'hackium') return;
-      if (data.name === 'clientLoaded') {
-        console.log('Client loaded on newtab, replaying messages');
-        // Replay messages that were sent before the client was loaded
-        messages.forEach((data) => {
-          window.postMessage(data);
-        });
-        window.removeEventListener('message', preloadHandler);
-      } else {
-        console.log('Client not loaded yet, queuing')
-        messages.push(evt.data);
-      }
-    };
-    window.addEventListener('message', preloadHandler)
-  }())
-</script>
+  <script>
+    (function () {
+      const messages = [];
+      const preloadHandler = (evt) => {
+        const data = event.data;
+        if (!data || data.owner !== 'hackium') return;
+        if (data.name === 'clientLoaded') {
+          console.log('Client loaded on newtab, replaying messages');
+          // Replay messages that were sent before the client was loaded
+          messages.forEach((data) => window.postMessage(data));
+          window.removeEventListener('message', preloadHandler);
+        } else {
+          console.log('Client not loaded yet, queuing');
+          messages.push(evt.data);
+        }
+      };
+      window.addEventListener('message', preloadHandler);
+    })();
+  </script>
 
-<body>
-  New tab
-</body>
-
+  <body>
+    New tab
+  </body>
 </html>

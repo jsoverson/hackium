@@ -1,14 +1,12 @@
-import { Target } from 'puppeteer/lib/cjs/common/Target';
-import { BrowserContext } from 'puppeteer/lib/cjs/common/Browser';
 import Protocol from 'devtools-protocol';
 import { CDPSession } from 'puppeteer/lib/cjs/common/Connection';
-import { Viewport } from 'puppeteer/lib/cjs/common/PuppeteerViewport';
-import { HackiumPage } from './hackium-page';
-import Hackium from '..';
-import Logger from '../util/logger';
 import { EventEmitter } from 'puppeteer/lib/cjs/common/EventEmitter';
+import { Viewport } from 'puppeteer/lib/cjs/common/PuppeteerViewport';
+import { Target } from 'puppeteer/lib/cjs/common/Target';
+import Logger from '../util/logger';
 import { mixin } from '../util/mixin';
 import { HackiumBrowserContext } from './hackium-browser-context';
+import { HackiumPage } from './hackium-page';
 
 export interface HackiumTarget extends Target, EventEmitter {}
 

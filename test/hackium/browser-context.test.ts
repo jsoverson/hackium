@@ -1,7 +1,7 @@
 import { start, TestServer } from '@jsoverson/test-server';
 import { expect } from 'chai';
 import fs from 'fs';
-import Hackium from '../../src';
+import { Hackium } from '../../src';
 import { getRandomDir } from '../../src/util/file';
 
 const fsp = fs.promises;

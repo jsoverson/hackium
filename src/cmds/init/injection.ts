@@ -13,15 +13,8 @@ export default async function initialize() {
       {
         name: 'name',
         message: 'Filename:',
-        default: 'interceptor.js',
+        default: 'injection.js',
         type: 'string',
-      },
-      {
-        name: 'type',
-        message: 'Which template would you like to use?',
-        default: 0,
-        choices: ['Basic interceptor template', 'Pretty printer', 'JavaScript transformer using shift-refactor'],
-        type: 'list',
       },
     ])
     .catch((error) => {
