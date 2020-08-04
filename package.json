@@ -22,7 +22,19 @@
     "dist": "./dist",
     "src": "./src"
   },
-  "keywords": [],
+  "keywords": [
+    "hackium",
+    "puppeteer",
+    "browser",
+    "automation",
+    "chromium",
+    "chrome",
+    "web pages",
+    "shift-refactor",
+    "reverse engineering",
+    "hacking",
+    "pentesting"
+  ],
   "author": "Jarrod Overson <jsoverson@gmail.com>",
   "license": "ISC",
   "dependencies": {
