@@ -33,11 +33,11 @@ export class Vector {
 export class SimulatedMovement {
   drag: number;
   impulse: number;
-  targetArea: number;
+  targetRadius: number;
   constructor(drag = 4, impulse = 2, targetRadius = 20) {
     this.drag = drag;
     this.impulse = impulse;
-    this.targetArea = targetRadius;
+    this.targetRadius = targetRadius;
   }
   generatePath(start: Vector, end: Vector) {
     let velocity = new Vector(0, 0),
@@ -58,7 +58,7 @@ export class SimulatedMovement {
       let hiccup = Random.rng.oneIn(6);
 
       // if we're further than the target area then go full speed, otherwise slow down.
-      if (remainingDistance >= this.targetArea) {
+      if (remainingDistance >= this.targetRadius) {
         force = force.divide(sqrt3).add(Random.rng.float(this.impulse, this.impulse * 2 + 1) / sqrt5);
       } else {
         force = force.divide(Math.SQRT2);
@@ -66,7 +66,6 @@ export class SimulatedMovement {
       velocity = velocity.add(force).add(end.subtract(start).multiply(this.drag).divide(remainingDistance));
 
       let maxStep = Math.min(remainingDistance, hiccup ? hiccupDistance : remainingDistance);
-      console.log(maxStep);
 
       if (velocity.magnitude() > maxStep) {
         var randomDist = maxStep / 2 + Random.rng.float(0, maxStep / 2);
