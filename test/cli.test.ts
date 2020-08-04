@@ -223,16 +223,16 @@ describe('cli', function () {
       console.log('short circuiting');
       return;
     }
-    const pwd = dir;
-    const args = getArgs(`--pwd="${pwd}" --userDataDir=${dir}`);
+    const userDataDir = path.join(dir, 'chrome');
+    const args = getArgs(`--pwd="${dir}" --userDataDir=${userDataDir}`);
     const { repl } = await _runCli(args, { stdin });
     instance = repl.context.hackium;
     stdin.send('/*hello world*/');
     stdin.send('\n');
-    await delay(100);
-    console.log(resolve(['.repl_history'], pwd));
+    await delay(200);
+    console.log(resolve(['.repl_history'], userDataDir));
     console.log(dir);
-    const replHistoryPath = resolve(['.repl_history'], pwd);
+    const replHistoryPath = resolve(['.repl_history'], dir);
     const history = await read(replHistoryPath);
     expect(history).to.equal(`/*hello world*/`);
   });
