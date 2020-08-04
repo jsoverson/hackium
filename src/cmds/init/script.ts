@@ -1,11 +1,4 @@
 import inquirer from 'inquirer';
-import { SafeMap } from '../../util/SafeMap';
-
-export const templates = new SafeMap([
-  ['Basic interceptor template', 'interceptor.js'],
-  ['Pretty printer', 'interceptor-prettify.js'],
-  ['JavaScript transformer using shift-refactor', 'interceptor-refactor.js'],
-]);
 
 export default async function initialize() {
   return inquirer
