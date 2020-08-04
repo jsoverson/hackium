@@ -10,12 +10,12 @@ describe('Hackium', function () {
   afterEach(async () => {
     if (hackium) await hackium.close();
   });
-  it('Should insantiate with no arguments', async () => {
+  it('Should instantiate with no arguments', async () => {
     hackium = new Hackium();
     expect(hackium).to.be.instanceOf(Hackium);
   });
 
-  it('Should propagate version', async () => {
+  it('Should use version from package.json', async () => {
     hackium = new Hackium();
     const pkg = require(path.join(findRoot(__dirname), 'package.json'));
     expect(hackium.version).to.equal(pkg.version);

@@ -1,4 +1,4 @@
-import Hackium from '..';
+import { Hackium } from '..';
 import { Arguments, ArgumentsWithDefaults } from '../arguments';
 import { HackiumBrowser } from '../hackium/hackium-browser';
 import { LaunchOptions, ChromeArgOptions, BrowserOptions } from 'puppeteer/lib/cjs/node/LaunchOptions';
