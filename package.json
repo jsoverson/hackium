@@ -22,6 +22,17 @@
   "bin": {
     "hackium": "./bin/hackium"
   },
+  "files": [
+    "dist",
+    "bin",
+    "client",
+    "extensions",
+    "pages",
+    "src",
+    "README.md",
+    "tsconfig.json",
+    "LICENSE.md"
+  ],
   "directories": {
     "dist": "./dist",
     "src": "./src"
