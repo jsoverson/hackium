@@ -69,7 +69,7 @@ export async function _runCli(cliArgs: Arguments, replOptions: ReplOptions = {})
 
     try {
       const configFromFile = require(location);
-      log.info(`using config found at %o`);
+      log.info(`using config found at %o`, location);
       log.debug(configFromFile);
       configFromFile.pwd = path.dirname(location);
       log.debug(`setting pwd to config dir: ${path.dirname(location)}`);
