@@ -30,12 +30,14 @@ describe('cli', function () {
 
   beforeEach(async () => {
     dir = await getRandomDir();
+    console.log(dir);
     baseArgs = `--pwd="${__dirname}" --userDataDir=${dir}`;
     baseUrlArgs = `--url="${server.url('index.html')}" ${baseArgs}`;
   });
 
   afterEach((done) => {
     (instance ? instance.close() : Promise.resolve()).finally(() => {
+      instance = undefined;
       rimraf(dir, (err) => {
         if (err) done(err);
         done();
@@ -230,7 +232,7 @@ describe('cli', function () {
     stdin.send('/*hello world*/');
     stdin.send('\n');
     await delay(200);
-    console.log(resolve(['.repl_history'], userDataDir));
+    console.log(resolve(['.repl_history'], dir));
     console.log(dir);
     const replHistoryPath = resolve(['.repl_history'], dir);
     const history = await read(replHistoryPath);
