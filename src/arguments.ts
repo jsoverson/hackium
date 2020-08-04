@@ -33,7 +33,7 @@ export class ArgumentsWithDefaults extends Arguments {
   headless = false;
   userDataDir = path.join(process.env.HOME || process.cwd(), '.hackium', 'chromium');
   timeout = 30000;
-  devtools = true;
+  devtools = false;
   watch = false;
   execute: string[] = [];
   plugins: Plugin[] = [];

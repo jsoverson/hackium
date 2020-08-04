@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { merge } from '../../src/util/object';
 
 describe('object', function () {
-  it('.merge() should take arbitrary other objects', async () => {
+  it('.merge() should take varargs', async () => {
     const other1 = {
       a: 1,
       b: 'not this',
@@ -54,7 +54,6 @@ describe('object', function () {
     const mutatedDest = merge(dest, other);
     const expected = {
       undef1: 'defined',
-      undef2: undefined,
       defined1: 'redefined',
       defined2: 'defined',
       defined3: 'defined',
@@ -63,5 +62,49 @@ describe('object', function () {
       array3: ['otherArray3'],
     };
     expect(mutatedDest).to.deep.equal(expected);
+  });
+  it('.merge() cliArgs should override file config when defined', () => {
+    const cliArgs = {
+      devtools: false,
+      inject: [],
+      interceptor: [],
+      execute: [],
+      headless: false,
+      pwd: '/Users/jsoverson/development/src/hackium',
+      _: [],
+      adblock: false,
+      env: [],
+      I: [],
+      e: [],
+      i: [],
+      userDataDir: '/Users/jsoverson/.hackium/chromium',
+      U: '/Users/jsoverson/.hackium/chromium',
+      'user-data-dir': '/Users/jsoverson/.hackium/chromium',
+      d: true,
+      watch: false,
+      w: false,
+      plugin: [],
+      p: [],
+      timeout: 30000,
+      t: 30000,
+      chromeOutput: false,
+      'chrome-output': false,
+      config: '',
+      c: '',
+      $0: '../../../.npm/_npx/13379/bin/hackium',
+      plugins: [],
+    };
+    let config = {
+      url: 'https://example.com',
+      devtools: false,
+      inject: [],
+      interceptor: [],
+      execute: [],
+      headless: false,
+      pwd: '/Users/jsoverson/development/src/hackium',
+    };
+    config = merge(config, cliArgs);
+    expect(config.url).to.equal('https://example.com');
+    expect(config.devtools).to.equal(false);
   });
 });

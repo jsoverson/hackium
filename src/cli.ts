@@ -52,12 +52,12 @@ export interface ReplOptions {
   stdin?: Readable;
 }
 
-export async function _runCli(configFromCommandLine: Arguments, replOptions: ReplOptions = {}) {
+export async function _runCli(cliArgs: Arguments, replOptions: ReplOptions = {}) {
   const configFilesToCheck = [...DEFAULT_CONFIG_NAMES];
 
-  if (configFromCommandLine.config) configFilesToCheck.unshift(configFromCommandLine.config);
+  if (cliArgs.config) configFilesToCheck.unshift(cliArgs.config);
 
-  let config = configFromCommandLine;
+  let config = undefined;
 
   for (let i = 0; i < configFilesToCheck.length; i++) {
     const fileName = configFilesToCheck[i];
@@ -66,18 +66,22 @@ export async function _runCli(configFromCommandLine: Arguments, replOptions: Rep
       log.debug(`no config found at ${location}`);
       continue;
     }
+
     try {
       const configFromFile = require(location);
-      log.info(`using config found at ${location}`);
+      log.info(`using config found at %o`);
+      log.debug(configFromFile);
       configFromFile.pwd = path.dirname(location);
       log.debug(`setting pwd to config dir: ${path.dirname(location)}`);
-      config = merge({}, configFromFile, configFromCommandLine);
+      config = configFromFile;
       log.debug(`merged with command line arguments`);
     } catch (e) {
       log.error(`error importing configuration:`);
       console.log(e);
     }
   }
+  if (!config) config = cliArgs;
+  else config = merge(config, cliArgs);
 
   const hackium = new Hackium(config);
 
@@ -99,9 +103,9 @@ export async function _runCli(configFromCommandLine: Arguments, replOptions: Rep
         input: replOptions.stdin || process.stdin,
       });
       log.debug('repl started');
-      if (configFromCommandLine.pwd) {
+      if (cliArgs.pwd) {
         const setupHistory = promisify(replInstance.setupHistory.bind(replInstance));
-        const replHistoryPath = resolve(['.repl_history'], configFromCommandLine.pwd);
+        const replHistoryPath = resolve(['.repl_history'], cliArgs.pwd);
         log.debug('saving repl history at %o', replHistoryPath);
         await setupHistory(replHistoryPath);
       } else {

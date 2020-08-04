@@ -13,8 +13,8 @@ export function merge(dest: any, ...others: any) {
         } else if (typeof dest[key] === 'object') {
           if (key in other) newObject[key] = merge(dest[key], other[key]);
         } else {
-          if (key in dest) newObject[key] = dest[key];
-          if (key in other) newObject[key] = other[key];
+          if (key in dest && dest[key] !== undefined) newObject[key] = dest[key];
+          if (key in other && other[key] !== undefined) newObject[key] = other[key];
         }
       } else if (key in other) {
         if (Array.isArray(other[key])) {
