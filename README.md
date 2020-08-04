@@ -30,6 +30,20 @@ $ npm install -g hackium
 
 You can install Hackium locally but every install downloads an additional Chromium installation so local installs should be avoided unless necessary.
 
+## API usage
+
+Hackium can be used like Puppeteer from standard node.js scripts, e.g.
+
+```js
+const { Hackium } = require('hackium');
+
+(async function main() {
+  const hackium = new Hackium();
+  const browser = await hackium.launch();
+  //...
+})();
+```
+
 ## Command line usage
 
 Open hackium with the `hackium` command and Hackium will start the bundled Chromium.
@@ -90,7 +104,7 @@ $ DEBUG=hackium* hackium
 
 ## Configuration
 
-Hackium looks for `hackium.json` or `hackium.config.js` files in the current directory for configuration. Hackium merges or overrides configuration from the command line arguments. All command line options
+Hackium looks for `hackium.json` or `hackium.config.js` files in the current directory for configuration. Hackium merges or overrides configuration from the command line arguments. See the [Arguments definition](https://github.com/jsoverson/hackium/blob/master/src/arguments.ts#L25-L42) for valid configuration options.
 
 ## REPL
 
@@ -103,8 +117,34 @@ Hackium's REPL exposes the browser, page, and protocol instances for rapid proto
 - cdp: chrome devtools protocol connection
 - extension: chrome extension API bridge
 
+## Interceptors
+
+Interceptor modules define two things, a pattern that matches against URLs and an interceptor which is passed both the request and the response and can optionally return a modified response to send to the browser.
+
+Use `hackium init interceptor` to see examples of different interceptors
+
+## Injecting JavaScript
+
+Injecting JavaScript before any other code loads is the only way to guarantee a pristine, unadulterated environment. Injected JavaScript can take any form and will run at the start of every page load.
+
+Use `hackium init injection` to see an example of injected JavaScript that augments the in-page `hackium` client.
+
 ## Hackium Scripts
 
-Getting sh\*t done is the name of the game here, and the boilerplate around getting P
+Hackium scripts are normal JavaScript scripts surrounded by an async wrapper function and a context primed with variables to reduce boilerplate. Hackium launches a browser and sets the `hackium`, `browser`, and `page` values automatically so you can rapidly get running.
+
+Use `hackium init script` to generate a sample script.
 
 ## Plugins
+
+Plugins are just simple JavaScript objects with the following properties that tie into the lifecycle of a Hackium instance and browser launch. See [hackium-plugin-preserve-native](https://github.com/jsoverson/hackium-plugin-preserve-native) for an example of a plugin that injects JavaScript into the page to preserve native functions.
+
+```
+{
+  preInit?: (hackium: Hackium, options: ArgumentsWithDefaults) => void;
+  postInit?: (hackium: Hackium, finalOptions: ArgumentsWithDefaults) => void;
+  preLaunch?: (hackium: Hackium, launchOptions: PuppeteerLaunchOptions) => void;
+  postLaunch?: (hackium: Hackium, browser: HackiumBrowser, finalLaunchOptions: PuppeteerLaunchOptions) => void;
+  postBrowserInit?: (hackium: Hackium, browser: HackiumBrowser, finalLaunchOptions: PuppeteerLaunchOptions) => void;
+}
+```
