@@ -32,6 +32,12 @@ export default function runCli() {
         });
       },
       (argv) => {
+        if (argv.plugin) {
+          argv.plugins = (argv.plugin as string[]).map((pluginPath) => {
+            const plugin = require(path.resolve(pluginPath));
+            return plugin && plugin.default ? plugin.default : plugin;
+          });
+        }
         _runCli(argv);
       },
     )
@@ -51,7 +57,7 @@ export async function _runCli(configFromCommandLine: Arguments, replOptions: Rep
 
   if (configFromCommandLine.config) configFilesToCheck.unshift(configFromCommandLine.config);
 
-  let config = {};
+  let config = configFromCommandLine;
 
   for (let i = 0; i < configFilesToCheck.length; i++) {
     const fileName = configFilesToCheck[i];

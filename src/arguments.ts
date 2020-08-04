@@ -19,7 +19,6 @@ export class Arguments {
   plugins?: Plugin[];
   chromeOutput?: boolean;
   timeout?: number | string;
-  // userAgent?: string;
   _?: any[];
 }
 
@@ -39,7 +38,6 @@ export class ArgumentsWithDefaults extends Arguments {
   execute: string[] = [];
   plugins: Plugin[] = [];
   chromeOutput = false;
-  // userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.0 Safari/537.36';
   _: string[] = [];
 }
 
@@ -72,7 +70,7 @@ export const definition = {
     default: defaultArguments.env,
   },
   inject: {
-    alias: 'E',
+    alias: 'I',
     array: true,
     describe: 'script file to inject first on every page',
     default: defaultArguments.inject,
@@ -106,6 +104,12 @@ export const definition = {
     describe: 'watch for configuration changes',
     boolean: true,
     default: defaultArguments.watch,
+  },
+  plugin: {
+    alias: 'p',
+    describe: 'include plugin',
+    array: true,
+    default: defaultArguments.plugins,
   },
   timeout: {
     alias: 't',

@@ -1,108 +1,38 @@
 // @ts-nocheck
-; (function (global, clientId, debug) {
-
-  // If we're on the top frame, draw a fake cursor helper
-  if (window === window.parent) {
-    // Swiped from https://github.com/puppeteer/puppeteer/issues/4378#issuecomment-499726973
-    window.addEventListener('DOMContentLoaded', () => {
-      const box = document.createElement('puppeteer-mouse-pointer');
-      const styleElement = document.createElement('style');
-      styleElement.innerHTML = `
-        puppeteer-mouse-pointer {
-          pointer-events: none;
-          position: absolute;
-          top: 0;
-          z-index: 10000;
-          left: 0;
-          width: 20px;
-          height: 20px;
-          background: rgba(0,0,0,.4);
-          border: 1px solid white;
-          border-radius: 10px;
-          margin: -10px 0 0 -10px;
-          padding: 0;
-          transition: background .2s, border-radius .2s, border-color .2s;
-        }
-        puppeteer-mouse-pointer.button-1 {
-          transition: none;
-          background: rgba(0,0,0,0.9);
-        }
-        puppeteer-mouse-pointer.button-2 {
-          transition: none;
-          border-color: rgba(0,0,255,0.9);
-        }
-        puppeteer-mouse-pointer.button-3 {
-          transition: none;
-          border-radius: 4px;
-        }
-        puppeteer-mouse-pointer.button-4 {
-          transition: none;
-          border-color: rgba(255,0,0,0.9);
-        }
-        puppeteer-mouse-pointer.button-5 {
-          transition: none;
-          border-color: rgba(0,255,0,0.9);
-        }
-      `;
-      document.head.appendChild(styleElement);
-      document.body.appendChild(box);
-      document.addEventListener('mousemove', event => {
-        box.style.left = event.pageX + 'px';
-        box.style.top = event.pageY + 'px';
-        updateButtons(event.buttons);
-      }, true);
-      document.addEventListener('mousedown', event => {
-        updateButtons(event.buttons);
-        box.classList.add('button-' + event.which);
-      }, true);
-      document.addEventListener('mouseup', event => {
-        updateButtons(event.buttons);
-        box.classList.remove('button-' + event.which);
-      }, true);
-      function updateButtons(buttons) {
-        for (let i = 0; i < 5; i++)
-          box.classList.toggle('button-' + i, buttons & (1 << i));
-      }
-    }, false);
-  };
-
+(function (global, clientId) {
   function log(...args) {
-    if (debug) console.log(...args);
+    console.log(...args);
   }
-
-  log(`loading ${clientId} client`);
 
   const eventHandlerName = '%%%clienteventhandler%%%';
 
   const client = {
     version: '%%%HACKIUM_VERSION%%%',
+    log,
     postMessage(name, data) {
-      window.postMessage({ owner: clientId, name, data }, (response) => {
-        console.log(response);
-      })
+      window.postMessage({ owner: clientId, name, data });
     },
     eventBridge: {
       send: (name, data) => {
-        log(`sending ${name} event to handler`);
         const handler = global[eventHandlerName];
         if (!handler || typeof handler !== 'function') throw new Error(`${name} client event handler not a function`);
         handler({
           owner: clientId,
           name,
-          data
-        })
-      }
+          data,
+        });
+      },
     },
     init() {
-      client.postMessage('clientLoaded')
-    }
-  }
+      client.postMessage('clientLoaded');
+      log(`loaded ${clientId} client`);
+    },
+  };
 
   if (typeof global[clientId] === 'object') {
-    log(`merging ${clientId} client with existing object`);
+    log(`merging ${clientId} client with existing configuration`);
     global[clientId] = Object.assign(client, global[clientId]);
   } else {
-    log(`creating ${clientId} object on global`);
     global[clientId] = client;
   }
 
@@ -110,9 +40,7 @@
     if (evt.data.owner !== 'hackium') return;
     const handler = window[eventHandlerName];
     if (handler && typeof handler === 'function') handler(evt.data);
-  })
+  });
 
-  client.init();
-
-  log(`loaded ${clientId} client`);
-}(window, '%%%clientid%%%', true));
+  if (window === window.parent) client.init();
+})(window, '%%%clientid%%%');

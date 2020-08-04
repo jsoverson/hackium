@@ -73,8 +73,6 @@ export class HackiumPage extends Page {
       const page = new HackiumPage(client, target, ignoreHTTPSErrors);
       page.log.debug('Created page new page for target %o', target._targetId);
       page.instrumentationConfig = config;
-      // console.log(defaultViewport);
-      // if (defaultViewport) await page.setViewport(defaultViewport);
       await page.__initialize(config);
       return page;
     };
@@ -225,14 +223,11 @@ export class HackiumPage extends Page {
       files.map((f) => {
         const location = resolve([f], this.instrumentationConfig.pwd);
         this.log.debug(`reading %o (originally %o)`, location, f);
-        // turns out puppeteer doesn't expose the Script identifier on evaluateOnNewDoc
-        // so watching and reloading in the current page may be a PITA.
         // if (this.instrumentationConfig.watch) {
-        //   watch(f, async (file: string) => {
-        //     this.log.debug('injector modified, reloading');
-        //     const reloadedInterceptor = await read(location).then(renderTemplate);
-        //     // remove old script and inject new script
-        //   });
+        //    turns out Puppeteer doesn't expose the Script identifier on evaluateOnNewDoc
+        //    so watching and reloading in the current page may be a PITA.
+        //    I'm leaving this here so you know not to bother implementing watch functionality
+        //    unless you want to reimplement a bunch of Puppeteer stuff.
         // }
         return read(location).then(renderTemplate);
       }),

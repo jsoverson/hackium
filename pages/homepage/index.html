@@ -12,7 +12,6 @@
           const data = event.data;
           if (!data || data.owner !== 'hackium') return;
           if (data.name === 'clientLoaded') {
-            console.log('Client loaded on newtab, replaying messages');
             // Replay messages that were sent before the client was loaded
             messages.forEach((data) => window.postMessage(data));
             window.removeEventListener('message', preloadHandler);

@@ -98,16 +98,6 @@ export class Hackium extends EventEmitter {
       this.defaultChromiumArgs.push('--enable-logging=stderr', '--v=1');
     }
 
-    // this is where adblock needs to be initialized. All puppeteer-extra stuff has been ripped out.
-    // if (this.config.adblock) {
-    //   this.log.debug('using adblocker');
-    //   this.puppeteer.use(
-    //     AdblockerPlugin({
-    //       blockTrackers: true,
-    //     }),
-    //   );
-    // }
-
     this.log.debug('running postInit on %o plugins', this.config.plugins.length);
     this.config.plugins.forEach((plugin) => plugin.postInit && plugin.postInit(this, this.config));
   }

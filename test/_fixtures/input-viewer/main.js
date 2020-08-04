@@ -1,7 +1,5 @@
-//@ts-nocheck
-import { getPointsBetween } from '../../../src/util/movement';
-import Bezier from 'bezier-js';
-import { Random } from '../../../src/util/random';
+import { SimulatedMovement, Vector } from '../../../dist/src/util/movement';
+
 const canvas = document.getElementById('canvas');
 
 function getContext(canvas) {
@@ -15,39 +13,40 @@ function getContext(canvas) {
 
 const ctx = getContext(canvas);
 
-function pctY(pct) { return canvas.height * pct }
-function pctX(pct) { return canvas.width * pct }
+function pctY(pct) {
+  return canvas.height * pct;
+}
+function pctX(pct) {
+  return canvas.width * pct;
+}
 
 const duration = 1000;
-const bX = pctX(.8);
-const bY = pctY(.4);
-const cX = pctX(.8);
-const cY = pctY(.4);
-
-
-/******** */
+const bX = pctX(0.8);
+const bY = pctY(0.4);
+const cX = pctX(0.8);
+const cY = pctY(0.4);
 
 const eachPoints = [
-  [pctX(.1), pctY(.1), pctX(.7), pctY(.7)],
-  // [pctX(.8), pctY(.9), pctX(.1), pctY(.2)],
-  // [pctX(.9), pctY(.1), pctX(.1), pctY(.8)],
-  // [pctX(.05), pctY(.95), pctX(.95), pctY(.05)],
+  [pctX(0.1), pctY(0.1), pctX(0.7), pctY(0.7)],
+  [pctX(0.1), pctY(0.1), pctX(0.7), pctY(0.7)],
+  [pctX(0.1), pctY(0.1), pctX(0.7), pctY(0.7)],
+  [pctX(0.1), pctY(0.1), pctX(0.7), pctY(0.7)],
 
-].map(([fromX, fromY, toX, toY]) => ([
-  // getPointsBetween(fromX, fromY, toX, toY, { duration }),
-  // getPointsBetween(fromX, fromY, toX, toY, {
-  //   duration,
-  //   stepFunction: bezier(bX),
-  // }),
-  // getPointsBetween(fromX, fromY, toX, toY, {
-  //   duration,
-  //   stepFunctionX: bezier3(undefined, .8),
-  //   stepFunctionY: bezier3(undefined, .7)
-  // }),
-  new SimulatedMovement(4, 2, 5).generatePath(new Vector(fromX, fromY), new Vector(toX, toY))
-  // getPointsBetween(fromX, fromY, toX, toY, { duration }),
-  // getPointsBetween(fromX, fromY, toX + 10, toY + 10, { duration }),
-]));
+  [pctX(0.8), pctY(0.9), pctX(0.1), pctY(0.2)],
+  [pctX(0.8), pctY(0.9), pctX(0.1), pctY(0.2)],
+  [pctX(0.8), pctY(0.9), pctX(0.1), pctY(0.2)],
+  [pctX(0.8), pctY(0.9), pctX(0.1), pctY(0.2)],
+
+  [pctX(0.9), pctY(0.1), pctX(0.1), pctY(0.8)],
+  [pctX(0.9), pctY(0.1), pctX(0.1), pctY(0.8)],
+  [pctX(0.9), pctY(0.1), pctX(0.1), pctY(0.8)],
+  [pctX(0.9), pctY(0.1), pctX(0.1), pctY(0.8)],
+
+  [pctX(0.05), pctY(0.95), pctX(0.95), pctY(0.05)],
+  [pctX(0.05), pctY(0.95), pctX(0.95), pctY(0.05)],
+  [pctX(0.05), pctY(0.95), pctX(0.95), pctY(0.05)],
+  [pctX(0.05), pctY(0.95), pctX(0.95), pctY(0.05)],
+].map(([fromX, fromY, toX, toY]) => [new SimulatedMovement().generatePath(new Vector(fromX, fromY), new Vector(toX, toY))]);
 
 const colors = ['#808', '#880', '#088', '#800', '#080', '#008'];
 for (let i = 0; i < eachPoints.length; i++) {
@@ -71,13 +70,12 @@ function draw(points, color, index = 0) {
   const lastPoint = points[index - 1];
   const point = points[index];
   if (!point) return;
-  // console.log(point);
   if (lastPoint) {
     ctx.moveTo(lastPoint[0], lastPoint[1]);
     ctx.lineTo(point[0], point[1]);
     ctx.stroke();
   }
-  // ctx.fillRect(point[0], point[1], 2, 2);
-  setTimeout(() => { draw(points, color, index + 1) }, 16);
+  setTimeout(() => {
+    draw(points, color, index + 1);
+  }, 16);
 }
-

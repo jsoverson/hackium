@@ -1,42 +1,4 @@
-import * as d3 from 'd3-ease';
 import { Random } from './random';
-
-export const stepFunctions = {
-  easePolyInOut: (t: number, from: number, to: number) => from + (to - from) * d3.easePolyInOut(t),
-};
-
-type StepFunction = (t: number, from: number, to: number) => number;
-
-export function getPointsBetween(
-  fromX: number,
-  fromY: number,
-  toX: number,
-  toY: number,
-  options: {
-    stepFunction?: StepFunction;
-    stepFunctionY?: StepFunction;
-    stepFunctionX?: StepFunction;
-    duration?: number;
-  } = {},
-) {
-  const {
-    duration = 1000,
-    stepFunction = stepFunctions.easePolyInOut,
-    stepFunctionX = stepFunction,
-    stepFunctionY = stepFunction,
-  } = options;
-  const framerate = 60;
-  const frames = Math.floor((duration / 1000) * framerate);
-  const frameInterval = 1000 / framerate;
-
-  return new Array(frames)
-    .fill(frameInterval)
-    .map((frameInterval, i) => (i === frames - 1 ? 1 : (frameInterval * i) / duration)) /* percentage to completion */
-    .map((t) => {
-      return [(stepFunctionX || stepFunction)(t, fromX, toX), (stepFunctionY || stepFunction)(t, fromY, toY), t];
-    });
-  // .map((val) => { console.log(); return val; })
-}
 
 export class Vector {
   x: number;
@@ -69,15 +31,15 @@ export class Vector {
 }
 
 export class SimulatedMovement {
-  gravity: number;
-  wind: number;
+  drag: number;
+  impulse: number;
   targetArea: number;
-  constructor(gravity: number = 5, wind: number = 5, targetArea: number = 50) {
-    this.gravity = gravity;
-    this.wind = wind;
-    this.targetArea = targetArea;
+  constructor(drag = 4, impulse = 2, targetRadius = 20) {
+    this.drag = drag;
+    this.impulse = impulse;
+    this.targetArea = targetRadius;
   }
-  generatePath(start: Vector, end: Vector, steps: number = 60, duration: number = 1000) {
+  generatePath(start: Vector, end: Vector) {
     let velocity = new Vector(0, 0),
       force = new Vector(0, 0);
 
@@ -85,28 +47,29 @@ export class SimulatedMovement {
     const sqrt5 = Math.sqrt(5);
 
     const totalDistance = start.distanceTo(end);
+    let hiccupDistance = this.impulse / 2;
 
     const points = [[start.x, start.y]];
     let done = false;
     while (!done) {
       var remainingDistance = Math.max(start.distanceTo(end), 1);
-      this.wind = Math.min(this.wind, remainingDistance);
+      this.impulse = Math.min(this.impulse, remainingDistance);
 
       let hiccup = Random.rng.oneIn(6);
-      let hiccupDistance = 2;
 
-      let maxStep = Math.min(remainingDistance, hiccup ? hiccupDistance : totalDistance);
-
-      // if we're further than the target area then go fast, otherwise slow down.
+      // if we're further than the target area then go full speed, otherwise slow down.
       if (remainingDistance >= this.targetArea) {
-        force = force.divide(sqrt3).add((Random.rng.float(0, this.wind * 2 + 1) - this.wind) / sqrt5);
+        force = force.divide(sqrt3).add(Random.rng.float(this.impulse, this.impulse * 2 + 1) / sqrt5);
       } else {
         force = force.divide(Math.SQRT2);
       }
-      velocity = velocity.add(force).add(end.subtract(start).multiply(this.gravity).divide(remainingDistance));
+      velocity = velocity.add(force).add(end.subtract(start).multiply(this.drag).divide(remainingDistance));
+
+      let maxStep = Math.min(remainingDistance, hiccup ? hiccupDistance : remainingDistance);
+      console.log(maxStep);
 
       if (velocity.magnitude() > maxStep) {
-        var randomDist = maxStep / 2.0 + Random.rng.float(0, maxStep / 2);
+        var randomDist = maxStep / 2 + Random.rng.float(0, maxStep / 2);
         velocity = velocity.unit().multiply(randomDist);
       }
 
@@ -116,7 +79,7 @@ export class SimulatedMovement {
       done = start.distanceTo(end) < 5;
     }
 
-    // make sure we land cleanly at the end;
+    // make sure our destination is our final point;
     points.push([end.x, end.y]);
     return points;
   }
