@@ -1,6 +1,6 @@
 import origFs from 'fs';
 import path from 'path';
-import { Page } from 'puppeteer/lib/cjs/common/Page';
+import { Page } from 'puppeteer/lib/cjs/puppeteer/common/Page';
 import repl from 'repl';
 import { Readable, Writable } from 'stream';
 import { promisify } from 'util';

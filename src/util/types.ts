@@ -1,7 +1,7 @@
 import { Hackium } from '..';
 import { Arguments, ArgumentsWithDefaults } from '../arguments';
 import { HackiumBrowser } from '../hackium/hackium-browser';
-import { LaunchOptions, ChromeArgOptions, BrowserOptions } from 'puppeteer/lib/cjs/node/LaunchOptions';
+import { LaunchOptions, ChromeArgOptions, BrowserOptions } from 'puppeteer/lib/cjs/puppeteer/node/LaunchOptions';
 
 export interface Constructor<T> {
   new (...args: any): T;

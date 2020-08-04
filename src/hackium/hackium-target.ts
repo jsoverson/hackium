@@ -1,8 +1,8 @@
 import Protocol from 'devtools-protocol';
-import { CDPSession } from 'puppeteer/lib/cjs/common/Connection';
-import { EventEmitter } from 'puppeteer/lib/cjs/common/EventEmitter';
-import { Viewport } from 'puppeteer/lib/cjs/common/PuppeteerViewport';
-import { Target } from 'puppeteer/lib/cjs/common/Target';
+import { CDPSession } from 'puppeteer/lib/cjs/puppeteer/common/Connection';
+import { EventEmitter } from 'puppeteer/lib/cjs/puppeteer/common/EventEmitter';
+import { Viewport } from 'puppeteer/lib/cjs/puppeteer/common/PuppeteerViewport';
+import { Target } from 'puppeteer/lib/cjs/puppeteer/common/Target';
 import Logger from '../util/logger';
 import { mixin } from '../util/mixin';
 import { HackiumBrowserContext } from './hackium-browser-context';

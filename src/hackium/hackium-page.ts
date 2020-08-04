@@ -4,12 +4,12 @@ import findRoot from 'find-root';
 import importFresh from 'import-fresh';
 import path from 'path';
 import { intercept, InterceptionHandler, Interceptor } from 'puppeteer-interceptor';
-import { CDPSession } from 'puppeteer/lib/cjs/common/Connection';
-import { HTTPResponse } from 'puppeteer/lib/cjs/common/HTTPResponse';
-import { PuppeteerLifeCycleEvent } from 'puppeteer/lib/cjs/common/LifecycleWatcher';
-import { Page } from 'puppeteer/lib/cjs/common/Page';
-import { Viewport } from 'puppeteer/lib/cjs/common/PuppeteerViewport';
-import { Target } from 'puppeteer/lib/cjs/common/Target';
+import { CDPSession } from 'puppeteer/lib/cjs/puppeteer/common/Connection';
+import { HTTPResponse } from 'puppeteer/lib/cjs/puppeteer/common/HTTPResponse';
+import { PuppeteerLifeCycleEvent } from 'puppeteer/lib/cjs/puppeteer/common/LifecycleWatcher';
+import { Page } from 'puppeteer/lib/cjs/puppeteer/common/Page';
+import { Viewport } from 'puppeteer/lib/cjs/puppeteer/common/PuppeteerViewport';
+import { Target } from 'puppeteer/lib/cjs/puppeteer/common/Target';
 import { HackiumClientEvent } from '../events';
 import { strings } from '../strings';
 import { read, resolve, watch } from '../util/file';
@@ -19,7 +19,7 @@ import { renderTemplate } from '../util/template';
 import { HackiumBrowser } from './hackium-browser';
 import { HackiumBrowserContext } from './hackium-browser-context';
 import { HackiumKeyboard, HackiumMouse } from './hackium-input';
-import { EvaluateFn, SerializableOrJSHandle } from 'puppeteer/lib/cjs/common/EvalTypes';
+import { EvaluateFn, SerializableOrJSHandle } from 'puppeteer/lib/cjs/puppeteer/common/EvalTypes';
 
 interface WaitForOptions {
   timeout?: number;

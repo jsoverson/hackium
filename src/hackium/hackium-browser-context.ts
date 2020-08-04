@@ -1,5 +1,5 @@
-import { BrowserContext } from 'puppeteer/lib/cjs/common/Browser';
-import { Connection } from 'puppeteer/lib/cjs/common/Connection';
+import { BrowserContext } from 'puppeteer/lib/cjs/puppeteer/common/Browser';
+import { Connection } from 'puppeteer/lib/cjs/puppeteer/common/Connection';
 import Logger from '../util/logger';
 import { HackiumBrowser } from './hackium-browser';
 import { HackiumPage } from './hackium-page';

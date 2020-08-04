@@ -1,5 +1,5 @@
-import { Puppeteer } from 'puppeteer/lib/cjs/common/Puppeteer';
-import { initializePuppeteer } from 'puppeteer/lib/cjs/initialize';
+import { Puppeteer } from 'puppeteer/lib/cjs/puppeteer/common/Puppeteer';
+import { initializePuppeteer } from 'puppeteer/lib/cjs/puppeteer/initialize';
 
 const puppeteer = initializePuppeteer('puppeteer');
 

@@ -1,4 +1,4 @@
-const { Browser } = require('puppeteer/lib/cjs/common/Browser');
+const { Browser } = require('puppeteer/lib/cjs/puppeteer/common/Browser');
 
 await page.goto('https://example.com');
 

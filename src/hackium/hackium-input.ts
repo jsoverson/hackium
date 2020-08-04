@@ -1,13 +1,13 @@
-import { Keyboard, Mouse, MouseButton, MouseWheelOptions } from 'puppeteer/lib/cjs/common/Input';
-import { ElementHandle } from 'puppeteer/lib/cjs/common/JSHandle';
-import { Viewport } from 'puppeteer/lib/cjs/common/PuppeteerViewport';
-import { keyDefinitions, KeyInput } from 'puppeteer/lib/cjs/common/USKeyboardLayout.js';
+import { Keyboard, Mouse, MouseButton, MouseWheelOptions } from 'puppeteer/lib/cjs/puppeteer/common/Input';
+import { ElementHandle } from 'puppeteer/lib/cjs/puppeteer/common/JSHandle';
+import { Viewport } from 'puppeteer/lib/cjs/puppeteer/common/PuppeteerViewport';
+import { keyDefinitions, KeyInput } from 'puppeteer/lib/cjs/puppeteer/common/USKeyboardLayout.js';
 import Logger from '../util/logger';
 import { SimulatedMovement, Vector } from '../util/movement';
 import { waterfallMap } from '../util/promises';
 import { Random } from '../util/random';
 import { HackiumPage } from './hackium-page';
-import { CDPSession } from 'puppeteer/lib/cjs/common/Connection';
+import { CDPSession } from 'puppeteer/lib/cjs/puppeteer/common/Connection';
 
 export interface Point {
   x: number;
