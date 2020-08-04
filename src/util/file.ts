@@ -72,7 +72,7 @@ export function remove(parts: string | string[], pwd = '') {
 }
 
 export async function getRandomDir(prefix = 'hackium -') {
-  const dir = fs.mkdtemp(path.join(os.tmpdir(), 'prefix'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'prefix'));
   debug('created random directory %o', dir);
   return dir;
 }

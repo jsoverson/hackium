@@ -1,7 +1,11 @@
 {
   "name": "hackium",
   "version": "0.0.1",
-  "description": "TODO",
+  "description": "Hackium is a browser, a CLI tool, and a framework for web power users.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jsoverson/hackium"
+  },
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "scripts": {
