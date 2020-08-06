@@ -140,7 +140,7 @@ export class HackiumBrowser extends Browser {
     const context =
       browserContextId && this.__contexts.has(browserContextId) ? this.__contexts.get(browserContextId) : this.__defaultContext;
 
-    assert(context, 'Brower context should not be null or undefined');
+    if (!context) throw new Error('Brower context should not be null or undefined');
     this.log.debug('Creating new target %o', targetInfo);
     const target = new HackiumTarget(
       targetInfo,
