@@ -20,6 +20,10 @@ Hackium started as Puppeteer scripts and will continue to directly rely on Puppe
 - Puppeteer scripts can be used with Hackium with few to no changes, Hackium scripts can not be used by Puppeteer.
 - and a lot more.
 
+## Status
+
+Experimental. This is an evolving project.
+
 ## Installation
 
 Install hackium globally with:
