@@ -3,13 +3,13 @@ import { EventEmitter } from 'events';
 import findRoot from 'find-root';
 import { createRequire } from 'module';
 import path from 'path';
-import { mergeLaunchOptions } from 'puppeteer-extensionbridge';
+import { hackiumExtensionBridge } from '../plugins/extensionbridge';
 import { Browser } from 'puppeteer/lib/cjs/puppeteer/common/Browser';
 import { Connection } from 'puppeteer/lib/cjs/puppeteer/common/Connection';
 import { Viewport } from 'puppeteer/lib/cjs/puppeteer/common/PuppeteerViewport';
 import { LaunchOptions } from 'puppeteer/lib/cjs/puppeteer/node/LaunchOptions';
 import vm from 'vm';
-import { Arguments, ArgumentsWithDefaults, defaultArguments } from '../arguments';
+import { Arguments, ArgumentsWithDefaults, cliArgsDefinition } from '../arguments';
 import puppeteer from '../puppeteer';
 import { read, resolve } from '../util/file';
 import Logger from '../util/logger';
@@ -17,6 +17,7 @@ import { waterfallMap } from '../util/promises';
 import { PuppeteerLaunchOptions } from '../util/types';
 import { BrowserCloseCallback, HackiumBrowser } from './hackium-browser';
 import { HackiumPage } from './hackium-page';
+import { time } from 'console';
 
 const ENVIRONMENT = ['GOOGLE_API_KEY=no', 'GOOGLE_DEFAULT_CLIENT_ID=no', 'GOOGLE_DEFAULT_CLIENT_SECRET=no'];
 
@@ -45,28 +46,24 @@ export class Hackium extends EventEmitter {
   log = new Logger('hackium');
   version = require(path.join(findRoot(__dirname), 'package.json')).version;
 
-  config: ArgumentsWithDefaults = defaultArguments;
+  config: ArgumentsWithDefaults = new ArgumentsWithDefaults();
 
   private defaultChromiumArgs: string[] = [
     '--disable-infobars',
     '--no-default-browser-check',
-    `--load-extension=${path.join(findRoot(__dirname), 'extensions', 'theme')}`,
     `--homepage=file://${path.join(findRoot(__dirname), 'pages', 'homepage', 'index.html')}`,
     `file://${path.join(findRoot(__dirname), 'pages', 'homepage', 'index.html')}`,
   ];
 
   private launchOptions: PuppeteerLaunchOptions = {
-    devtools: defaultArguments.devtools,
-    timeout: defaultArguments.timeout,
-    ignoreDefaultArgs: ['--enable-automation', '--disable-extensions'],
+    ignoreDefaultArgs: ['--enable-automation'],
   };
 
-  constructor(config: Arguments = defaultArguments) {
+  constructor(config?: Arguments) {
     super();
     this.log.debug('contructing Hackium instance');
     if (config) this.config = Object.assign({}, this.config, config);
-    this.log.debug('Using config:');
-    this.log.debug(this.config);
+    this.log.debug('Using config: %o', this.config);
 
     this.log.debug('running preInit on %o plugins', this.config.plugins.length);
     this.config.plugins.forEach((plugin) => plugin.preInit && plugin.preInit(this, this.config));
@@ -88,7 +85,21 @@ export class Hackium extends EventEmitter {
     setEnv(this.config.env);
     setEnv(ENVIRONMENT);
 
-    this.launchOptions.headless = this.config.headless;
+    if (this.config.headless) {
+      this.log.debug('NOTE: headless mode disables devtools, the extension bridge, and other plugins.');
+      this.launchOptions.headless = true;
+      this.config.devtools = false;
+    } else {
+      this.launchOptions.headless = false;
+      this.defaultChromiumArgs.push(`--load-extension=${path.join(findRoot(__dirname), 'extensions', 'theme')}`);
+      if (Array.isArray(this.launchOptions.ignoreDefaultArgs)) {
+        this.launchOptions.ignoreDefaultArgs.push('--disable-extensions');
+      } else if (!this.launchOptions.ignoreDefaultArgs) {
+        this.launchOptions.ignoreDefaultArgs = ['--disable-extensions'];
+      }
+      this.config.plugins.push(hackiumExtensionBridge);
+    }
+
     if (this.config.userDataDir) {
       this.launchOptions.userDataDir = this.config.userDataDir;
     }
@@ -108,19 +119,19 @@ export class Hackium extends EventEmitter {
   }
 
   async launch(options: LaunchOptions = {}) {
-    const launchOptions = mergeLaunchOptions(Object.assign(options, this.launchOptions));
+    let launchOptions = Object.assign(options, this.launchOptions);
     this.log.debug('running preLaunch on %o plugins', this.config.plugins.length);
-    this.config.plugins.forEach((plugin) => plugin.preLaunch && plugin.preLaunch(this, launchOptions));
+    await waterfallMap(this.config.plugins, (plugin) => plugin.preLaunch && plugin.preLaunch(this, launchOptions));
 
     const browser = ((await puppeteer.launch(launchOptions)) as unknown) as HackiumBrowser;
 
     this.log.debug('running postLaunch on %o plugins', this.config.plugins.length);
-    this.config.plugins.forEach((plugin) => plugin.postLaunch && plugin.postLaunch(this, browser, launchOptions));
+    await waterfallMap(this.config.plugins, (plugin) => plugin.postLaunch && plugin.postLaunch(this, browser, launchOptions));
 
-    await browser.onInitialization();
+    await browser.initialize();
 
     this.log.debug('running postBrowserInit on %o plugins', this.config.plugins.length);
-    this.config.plugins.forEach((plugin) => plugin.postBrowserInit && plugin.postBrowserInit(this, browser, launchOptions));
+    await waterfallMap(this.config.plugins, (plugin) => plugin.postBrowserInit && plugin.postBrowserInit(this, browser, launchOptions));
 
     return (this.browser = browser);
   }

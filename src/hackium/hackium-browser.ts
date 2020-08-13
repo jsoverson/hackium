@@ -34,8 +34,6 @@ export class HackiumBrowser extends Browser {
   __defaultViewport?: Viewport;
   newtab = `file://${path.join(findRoot(__dirname), 'pages', 'homepage', 'index.html')}`;
 
-  private _initializationPromise: Promise<unknown>;
-
   constructor(
     connection: Connection,
     contextIds: string[],
@@ -60,47 +58,15 @@ export class HackiumBrowser extends Browser {
       throw new Error('Need to reimplement how to intercept target creation. Submit a PR with a reproducible test case.');
     }
     this.log.debug('Hackium browser created');
-    this._initializationPromise = this._initialize();
   }
 
-  private _initialize() {
-    return (async () => {
-      this.log.debug('initializing and decorating browser instance');
-      await decorateBrowser(this, { newtab: this.newtab });
-      let lastActive = { tabId: -1, windowId: -1 };
-      await this.extension.addListener('chrome.tabs.onActivated', async ({ tabId, windowId }) => {
-        lastActive = { tabId, windowId };
-        const code = `
-          window.postMessage({owner:'hackium', name:'pageActivated', data:{tabId:${tabId}, windowId:${windowId}}});
-        `;
-        this.log.debug(`chrome.tabs.onActivated triggered. Calling %o`, code);
-        await this.extension.send('chrome.tabs.executeScript', tabId, { code });
-      });
-      await this.extension.addListener('chrome.tabs.onUpdated', async (tabId) => {
-        if (tabId === lastActive.tabId) {
-          const code = `
-            window.postMessage({owner:'hackium', name:'pageActivated', data:{tabId:${tabId}}});
-          `;
-          this.log.debug(`Active page updated. Calling %o`, code);
-          await this.extension.send('chrome.tabs.executeScript', tabId, { code });
-        }
-      });
-
-      await this.waitForTarget((target: Target) => target.type() === 'page');
-      const [page] = await this.pages();
-      this.setActivePage(page);
-    })();
-  }
-
-  onInitialization() {
-    return this._initializationPromise;
+  async initialize() {
+    await this.waitForTarget((target: Target) => target.type() === 'page');
+    const [page] = await this.pages();
+    this.setActivePage(page);
   }
 
   async pages() {
-    // const contexts = this.browserContexts();
-    // const pagePromises = contexts.map((context) => context.pages());
-
-    // const contextPages = await Promise.all(pagePromises);
     const contextPages = await Promise.all(this.browserContexts().map((context) => context.pages()));
     return contextPages.reduce((acc, x) => acc.concat(x), []);
   }

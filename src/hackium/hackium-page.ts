@@ -175,15 +175,21 @@ export class HackiumPage extends Page {
         return;
       }
       this.log.debug(`Registering interceptor for pattern %o`, interceptor.intercept);
-      const handler = await intercept(this, interceptor.intercept, {
-        onResponseReceived: (evt: Interceptor.OnResponseReceivedEvent) => {
-          this.log.debug(`Intercepted response for URL %o`, evt.request.url);
-          let response = evt.response;
-          if (response) evt.response = response;
-          return interceptor.interceptor(browser, evt, DEBUG('hackium:interceptor'));
-        },
-      });
-      interceptor.handler = handler;
+      try {
+        const handler = await intercept(this, interceptor.intercept, {
+          onResponseReceived: (evt: Interceptor.OnResponseReceivedEvent) => {
+            this.log.debug(`Intercepted response for URL %o`, evt.request.url);
+            let response = evt.response;
+            if (response) evt.response = response;
+            return interceptor.interceptor(browser, evt, DEBUG('hackium:interceptor'));
+          },
+        });
+        interceptor.handler = handler;
+      } catch (e) {
+        this.log.debug('could not register interceptor for pattern(s) %o', interceptor.intercept);
+        this.log.warn('Interceptor failed to initialize for target. This may be fixable by trying in a new tab.');
+        this.log.warn(e);
+      }
     });
   }
 

@@ -1,9 +1,17 @@
 import { Func } from 'mocha';
 import { time } from 'console';
 
-export function waterfallMap<T, J>(array: J[], iterator: (el: J, i: number) => Promise<T>): Promise<T[]> {
+export function isPromise<T>(a: T | Promise<T>): a is Promise<T> {
+  return typeof a === 'object' && 'then' in a && typeof a.then === 'function';
+}
+
+export function waterfallMap<T, J>(array: J[], iterator: (el: J, i: number) => T | Promise<T>): Promise<T[]> {
   const reducer = (accumulator: Promise<T[]>, next: J, i: number): Promise<T[]> => {
-    return accumulator.then((result) => iterator(next, i).then((newNode) => result.concat(newNode)));
+    return accumulator.then((result) => {
+      const iteratorReturnValue = iterator(next, i);
+      if (isPromise(iteratorReturnValue)) return iteratorReturnValue.then((newNode) => result.concat(newNode));
+      else return Promise.resolve(result.concat(iteratorReturnValue));
+    });
   };
 
   return array.reduce(reducer, Promise.resolve([]));

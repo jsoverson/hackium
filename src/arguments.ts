@@ -41,84 +41,86 @@ export class ArgumentsWithDefaults extends Arguments {
   _: string[] = [];
 }
 
-export const defaultArguments = new ArgumentsWithDefaults();
+export function cliArgsDefinition() {
+  const defaultArguments = new ArgumentsWithDefaults();
 
-export const definition = {
-  headless: {
-    describe: 'start hackium in headless mode',
-    boolean: true,
-    default: defaultArguments.headless,
-  },
-  pwd: {
-    describe: 'root directory to look for support modules',
-    default: defaultArguments.pwd,
-  },
-  adblock: {
-    describe: 'turn on ad blocker',
-    default: defaultArguments.adblock,
-    // demandOption: false,
-  },
-  url: {
-    alias: 'u',
-    describe: 'starting URL',
-    default: defaultArguments.url,
-    // demandOption: true,
-  },
-  env: {
-    array: true,
-    describe: 'environment variable name/value pairs (e.g. --env MYVAR=value)',
-    default: defaultArguments.env,
-  },
-  inject: {
-    alias: 'I',
-    array: true,
-    describe: 'script file to inject first on every page',
-    default: defaultArguments.inject,
-  },
-  execute: {
-    alias: 'e',
-    array: true,
-    describe: 'hackium script to execute',
-    default: defaultArguments.execute,
-  },
-  interceptor: {
-    alias: 'i',
-    array: true,
-    describe: 'interceptor module that will handle intercepted responses',
-    default: defaultArguments.interceptor,
-  },
-  userDataDir: {
-    alias: 'U',
-    describe: 'Chromium user data directory',
-    string: true,
-    default: defaultArguments.userDataDir,
-  },
-  devtools: {
-    alias: 'd',
-    describe: 'open devtools automatically on every tab',
-    boolean: true,
-    default: defaultArguments.devtools,
-  },
-  watch: {
-    alias: 'w',
-    describe: 'watch for configuration changes',
-    boolean: true,
-    default: defaultArguments.watch,
-  },
-  plugin: {
-    alias: 'p',
-    describe: 'include plugin',
-    array: true,
-    default: defaultArguments.plugins,
-  },
-  timeout: {
-    alias: 't',
-    describe: 'set timeout for Puppeteer',
-    default: defaultArguments.timeout,
-  },
-  chromeOutput: {
-    describe: 'print Chrome stderr & stdout logging',
-    boolean: true,
-    default: defaultArguments.chromeOutput,
-  },
-};
+  return {
+    headless: {
+      describe: 'start hackium in headless mode',
+      boolean: true,
+      default: defaultArguments.headless,
+    },
+    pwd: {
+      describe: 'root directory to look for support modules',
+      default: defaultArguments.pwd,
+    },
+    adblock: {
+      describe: 'turn on ad blocker',
+      default: defaultArguments.adblock,
+      // demandOption: false,
+    },
+    url: {
+      alias: 'u',
+      describe: 'starting URL',
+      default: defaultArguments.url,
+      // demandOption: true,
+    },
+    env: {
+      array: true,
+      describe: 'environment variable name/value pairs (e.g. --env MYVAR=value)',
+      default: defaultArguments.env,
+    },
+    inject: {
+      alias: 'I',
+      array: true,
+      describe: 'script file to inject first on every page',
+      default: defaultArguments.inject,
+    },
+    execute: {
+      alias: 'e',
+      array: true,
+      describe: 'hackium script to execute',
+      default: defaultArguments.execute,
+    },
+    interceptor: {
+      alias: 'i',
+      array: true,
+      describe: 'interceptor module that will handle intercepted responses',
+      default: defaultArguments.interceptor,
+    },
+    userDataDir: {
+      alias: 'U',
+      describe: 'Chromium user data directory',
+      string: true,
+      default: defaultArguments.userDataDir,
+    },
+    devtools: {
+      alias: 'd',
+      describe: 'open devtools automatically on every tab',
+      boolean: true,
+      default: defaultArguments.devtools,
+    },
+    watch: {
+      alias: 'w',
+      describe: 'watch for configuration changes',
+      boolean: true,
+      default: defaultArguments.watch,
+    },
+    plugin: {
+      alias: 'p',
+      describe: 'include plugin',
+      array: true,
+      default: defaultArguments.plugins,
+    },
+    timeout: {
+      alias: 't',
+      describe: 'set timeout for Puppeteer',
+      default: defaultArguments.timeout,
+    },
+    chromeOutput: {
+      describe: 'print Chrome stderr & stdout logging',
+      boolean: true,
+      default: defaultArguments.chromeOutput,
+    },
+  };
+}

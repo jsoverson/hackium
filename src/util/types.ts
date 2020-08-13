@@ -8,11 +8,11 @@ export interface Constructor<T> {
 }
 
 export interface Plugin {
-  preInit?: (hackium: Hackium, options: ArgumentsWithDefaults) => void;
-  postInit?: (hackium: Hackium, finalOptions: ArgumentsWithDefaults) => void;
-  preLaunch?: (hackium: Hackium, launchOptions: PuppeteerLaunchOptions) => void;
-  postLaunch?: (hackium: Hackium, browser: HackiumBrowser, finalLaunchOptions: PuppeteerLaunchOptions) => void;
-  postBrowserInit?: (hackium: Hackium, browser: HackiumBrowser, finalLaunchOptions: PuppeteerLaunchOptions) => void;
+  preInit?: (hackium: Hackium, options: ArgumentsWithDefaults) => any;
+  postInit?: (hackium: Hackium, finalOptions: ArgumentsWithDefaults) => any;
+  preLaunch?: (hackium: Hackium, launchOptions: PuppeteerLaunchOptions) => any;
+  postLaunch?: (hackium: Hackium, browser: HackiumBrowser, finalLaunchOptions: PuppeteerLaunchOptions) => any;
+  postBrowserInit?: (hackium: Hackium, browser: HackiumBrowser, finalLaunchOptions: PuppeteerLaunchOptions) => any;
 }
 
 export type PuppeteerLaunchOptions = LaunchOptions & ChromeArgOptions & BrowserOptions;

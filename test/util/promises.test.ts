@@ -1,4 +1,4 @@
-import { onlySettled, defer, delay } from '../../src/util/promises';
+import { onlySettled, defer, delay, waterfallMap } from '../../src/util/promises';
 import { expect } from 'chai';
 
 describe('Promises', function () {
@@ -17,5 +17,35 @@ describe('Promises', function () {
   it('delay() should resolve after the passed timeout', async () => {
     const value = await delay(100);
     expect(value).to.be.greaterThan(99);
+  });
+  it('waterfallMap() should run a series of promises in order', async function () {
+    const array = ['something', 1, { other: 'this' }];
+
+    const arrayIndex: any[] = [];
+
+    function promiseGenerator(el: any, i: number) {
+      return new Promise((res, rej) => {
+        setTimeout(() => res(el), Math.random() * 200);
+      });
+    }
+    function promiseGeneratorIndex(el: any, i: number) {
+      return new Promise((res, rej) => {
+        setTimeout(() => {
+          arrayIndex[i] = el;
+          res();
+        }, Math.random() * 200);
+      });
+    }
+    const newArray = await waterfallMap(array, promiseGenerator);
+    expect(newArray).to.deep.equal(array);
+    await waterfallMap(array, promiseGeneratorIndex);
+    expect(arrayIndex).to.deep.equal(array);
+    expect(arrayIndex).to.deep.equal(newArray);
+  });
+  it('waterfallMap() should tolerate non-promise values', async function () {
+    const array = ['something', 1, { other: 'this' }];
+
+    const newArray = await waterfallMap(array, (x) => x);
+    expect(newArray).to.deep.equal(array);
   });
 });

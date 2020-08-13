@@ -5,7 +5,7 @@ import repl from 'repl';
 import { Readable, Writable } from 'stream';
 import { promisify } from 'util';
 import { Hackium } from './';
-import { Arguments, definition } from './arguments';
+import { Arguments, cliArgsDefinition } from './arguments';
 import { HackiumBrowserEmittedEvents } from './hackium/hackium-browser';
 import { resolve } from './util/file';
 import Logger from './util/logger';
@@ -25,7 +25,7 @@ export default function runCli() {
       '$0',
       'Default command: start hackium browser & REPL',
       (yargs) => {
-        yargs.options(definition).option('config', {
+        yargs.options(cliArgsDefinition()).option('config', {
           alias: 'c',
           default: '',
           type: 'string',

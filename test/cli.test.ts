@@ -30,7 +30,6 @@ describe('cli', function () {
 
   beforeEach(async () => {
     dir = await getRandomDir();
-    console.log(dir);
     baseArgs = `--pwd="${__dirname}" --userDataDir=${dir}`;
     baseUrlArgs = `--url="${server.url('index.html')}" ${baseArgs}`;
   });
