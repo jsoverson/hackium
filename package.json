@@ -1,6 +1,6 @@
 {
   "name": "hackium",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Hackium is a browser, a CLI tool, and a framework for web power users.",
   "repository": {
     "type": "git",
