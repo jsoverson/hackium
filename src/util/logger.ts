@@ -9,6 +9,7 @@ export default class Logger {
   }
   format(...args: any) {
     let index = 0;
+    if (!args[0]) return '';
     args[0] = args[0].replace(/%([a-zA-Z%])/g, (match: string, format: string) => {
       if (match === '%%') return '%';
       index++;
