@@ -10,7 +10,7 @@ Hackium started as Puppeteer scripts and will continue to directly rely on Puppe
 
 ### Core differences
 
-- Hackium exposes access to [Chrome's Extension API](https://developer.chrome.com/extensions/api_index) via [`puppeteer-extensionbridge`](github.com/jsoverson/puppeteer-extensionbridge).
+- Hackium exposes access to [Chrome's Extension API](https://developer.chrome.com/extensions/api_index) via [`puppeteer-extensionbridge`](https://github.com/jsoverson/puppeteer-extensionbridge).
 - Hackium simulates human behavior for mouse movement and keyboard events, vs moving in straight lines or typing rapidly all at once.
 - Hackium prioritizes intercepting and transforming responses.
 - Hackium includes a plugin framework to hook into the hackium lifecycle.
@@ -31,6 +31,11 @@ Install hackium globally with:
 ```bash
 $ npm install -g hackium
 ```
+
+> NOTE: NodeJS version 12.x or higher is required in order for you to be able to use Hackium.
+>
+> Using NodeJS version 10.x you'll be able to use the `hackium init ...` functionality of the CLI,
+> but you won't able to run Hackium and its REPL.
 
 You can install Hackium locally but every install downloads an additional Chromium installation so local installs should be avoided unless necessary.
 
