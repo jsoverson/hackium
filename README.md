@@ -1,10 +1,10 @@
 # Hackium
 
-Hackium is a CLI tool, a browser, and a framework for analyzing and manipulating web sites.
+Hackium is a CLI tool, a browser, and a platform for analyzing and manipulating web sites.
 
 ## Hackium vs Puppeteer?
 
-Puppeteer is an automation framework aimed at developers who need to automate and test the web headlessly. Hackium exposes Puppeteer's automation framework to an interactive version of Chromium and extends it with features aimed at web power users.
+[Puppeteer][1] is an automation framework aimed at developers who need to automate and test the web headlessly. Hackium exposes Puppeteer's automation framework to an interactive version of Chromium and extends it with features aimed at web power users.
 
 Hackium started as Puppeteer scripts and will continue to directly rely on Puppeteer unless both project's focus diverge passed the point of code sharability.
 
@@ -22,7 +22,9 @@ Hackium started as Puppeteer scripts and will continue to directly rely on Puppe
 
 ## Status
 
-Experimental. This is an evolving project.
+Experimental.
+
+Hackium combines many disparate – sometimes experimental – APIs into one and as such, breaking changes can come from anywhere. Rather than limit public APIs to make it easier to stay backwards compatible, Hackium exposes as much as it can. You're in control. Backwards compatbility is a priority, but please consider the reality of depending on Hackium before building anything mission-critical.
 
 ## Installation
 
@@ -39,9 +41,9 @@ $ npm install -g hackium
 
 You can install Hackium locally but every install downloads an additional Chromium installation so local installs should be avoided unless necessary.
 
-## API usage
+## Using Hackium from node
 
-Hackium can be used like Puppeteer from standard node.js scripts, e.g.
+Hackium can be used like [Puppeteer][1] from standard node.js scripts, e.g.
 
 ```js
 const { Hackium } = require('hackium');
@@ -53,6 +55,95 @@ const { Hackium } = require('hackium');
 })();
 ```
 
+## API
+
+Hackium extends and overrides [Puppeteer] behavior regularly and a passing understanding of how to use Puppeteer is important for developer with Hackium. If you're only wiring together plugins or running a pre-configured project, you can skip the Puppeteer docs.
+
+### Core dependencies
+
+These projects or protocols provide valuable documentation that will help you get more out of Hackium
+
+- [puppeteer][1] - provides browser automation API
+- [puppeteer-extensionbridge] - provides access to the [Chrome Extension API](https://developer.chrome.com/extensions/api_index)
+- [puppeteer-interceptor](https://github.com/jsoverson/puppeteer-interceptor) - interception API
+- [Chrome Devtools API](https://chromedevtools.github.io/devtools-protocol/)
+
+### Hackium Plugins
+
+- [hackium-plugin-preserve-native](https://github.com/jsoverson/hackium-plugin-preserve-native) - preserves native browser API objects and methods before they can be overridden.
+- [hackium-plugin-visiblecursor](https://github.com/jsoverson/hackium-plugin-visiblecursor) - fakes a cursor so automated mouse movements are visible.
+
+### Related projects
+
+These are projects built with Hackium and JavaScript interception in mind, though are separate on their own.
+
+- [shift-refactor](https://github.com/jsoverson/shift-refactor) - JavaScript transformation library
+- [refactor-plugin-common](https://github.com/jsoverson/refactor-plugin-common) - common transformation/deobfuscation methods
+- [refactor-plugin-unsafe](https://github.com/jsoverson/refactor-plugin-unsafe) - experimental transformation methods
+- [shift-interceptor](https://github.com/jsoverson/shift-interpreter) - experimental JavaScript meta-interpreter
+
+### `Hackium`
+
+Import the `Hackium` class and instantiate a `hackium` instance with the core options.
+
+```js
+const { Hackium } = require('hackium');
+
+const hackium = new Hackium({
+  plugins: [
+    /* ... */
+  ],
+});
+```
+
+#### `.launch()`
+
+Like [Puppeteer], `hackium.launch()` launches a Chrome instance and returns a `HackiumBrowser` instance. Refer to Puppeteer's [Browser] section for documentation.
+
+#### `.cliBehavior()`
+
+`hackium.cliBehavior()` runs through the Hackium configuration as if it was called via the command line. This is useful when migrating from a simple `hackium.config.js` to a node.js project.
+
+Returns a browser instance. Refer to Puppeteer's [Browser] section for further documentation.
+
+```js
+const { Hackium } = require('hackium');
+
+const hackium = new Hackium({
+  plugins: [
+    /* ... */
+  ],
+});
+
+async function main() {
+  const browser = await hackium.cliBehavior();
+}
+```
+
+### HackiumBrowser
+
+HackiumBrowser extends Puppeteer's [Browser] and manages instrumentation of the browser.
+
+#### `.extension`
+
+Hackium Browser comes pre-configured with [puppeteer-extensionbridge] available via `browser.extension`. See [puppeteer-extensionbridge] for documentation.
+
+### HackiumPage
+
+HackiumPage extends Puppeteer's [Page] and manages instrumentation of each created page.
+
+#### `.mouse`
+
+Hackium's mouse class overrides Puppeteer's mouse behavior to simulate human movement. This is transparent in usage but means that movement actions are not instantaneous. Refer to Puppeteer's [Mouse] section for further documentation.
+
+#### `.mouse.idle()`
+
+Generates idle mouse movement behavior like scrolling, moving, and clicking.
+
+#### `.keyboard`
+
+Like `mouse`, the Hackium keyboard class simulates human behavior by typing at a casual speed with varying intervals. Refer to Puppeteer's [Keyboard] section for documentation.
+
 ## Command line usage
 
 Open hackium with the `hackium` command and Hackium will start the bundled Chromium.
@@ -60,6 +151,12 @@ Open hackium with the `hackium` command and Hackium will start the bundled Chrom
 ```bash
 $ hackium
 ```
+
+### Interceptor modules
+
+An interceptor module needs to expose two properties, `intercept` and `interceptor`. `intercept` is a list of request patterns to intercept and `interceptor` is a JavaScript function that is called on every request interception.
+
+More information on request patterns can be found at [puppeteer-interceptor] and [Chrome Devtools Protocol#Fetch.RequestPattern](https://chromedevtools.github.io/devtools-protocol/tot/Fetch/#type-RequestPattern)
 
 ### `hackium init`
 
@@ -144,9 +241,9 @@ Hackium scripts are normal JavaScript scripts surrounded by an async wrapper fun
 
 Use `hackium init script` to generate a sample script.
 
-## Plugins
+## Plugin API
 
-Plugins are just simple JavaScript objects with the following properties that tie into the lifecycle of a Hackium instance and browser launch. See [hackium-plugin-preserve-native](https://github.com/jsoverson/hackium-plugin-preserve-native) for an example of a plugin that injects JavaScript into the page to preserve native functions.
+Plugins are JavaScript objects with properties that tie into the Hackium lifecycle. See [hackium-plugin-preserve-native](https://github.com/jsoverson/hackium-plugin-preserve-native) for an example of a plugin that injects JavaScript into the page to preserve native functions.
 
 ```
 {
@@ -157,3 +254,10 @@ Plugins are just simple JavaScript objects with the following properties that ti
   postBrowserInit?: (hackium: Hackium, browser: HackiumBrowser, finalLaunchOptions: PuppeteerLaunchOptions) => void;
 }
 ```
+
+[1]: https://github.com/puppeteer/puppeteer/blob/v5.2.1/docs/api.md
+[browser]: https://github.com/puppeteer/puppeteer/blob/v5.2.1/docs/api.md#class-browser
+[mouse]: https://github.com/puppeteer/puppeteer/blob/v5.2.1/docs/api.md#class-mouse
+[keyboard]: https://github.com/puppeteer/puppeteer/blob/v5.2.1/docs/api.md#class-keyboard
+[page]: https://github.com/puppeteer/puppeteer/blob/v5.2.1/docs/api.md#class-Page
+[puppeteer-extensionbridge]: https://github.com/jsoverson/puppeteer-extensionbridge
