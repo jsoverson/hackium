@@ -177,21 +177,28 @@ export class HackiumBrowser extends Browser {
   }
 
   async setProxy(host: string, port: number) {
-    var config = {
-      mode: 'fixed_servers',
-      rules: {
-        singleProxy: {
-          scheme: 'http',
-          host: host,
-          port: port,
+    try {
+      if (typeof port !== 'number') throw new Error('port is not a number');
+      var config = {
+        mode: 'fixed_servers',
+        rules: {
+          singleProxy: {
+            scheme: 'http',
+            host: host,
+            port: port,
+          },
+          bypassList: [],
         },
-        bypassList: [],
-      },
-    };
-    const msg = { value: config, scope: 'regular' };
+      };
+      const msg = { value: config, scope: 'regular' };
+        this.log.debug(`sending request to change proxy`);
+        return this.extension.send(`chrome.proxy.settings.set`, msg);
 
-    this.log.debug(`sending request to change proxy`);
-    return this.extension.send(`chrome.proxy.settings.set`, msg);
+    } catch (err) {
+      const setProxyError = `HackiumBrowser.setProxy: ${err.message}`;
+      this.log.error(setProxyError);
+      throw new Error(setProxyError);
+    }
   }
 
   async clearProxy() {
