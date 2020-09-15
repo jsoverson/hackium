@@ -7,6 +7,7 @@ import Logger from '../util/logger';
 import { mixin } from '../util/mixin';
 import { HackiumBrowserContext } from './hackium-browser-context';
 import { HackiumPage } from './hackium-page';
+import { HackiumBrowser } from './hackium-browser';
 
 export interface HackiumTarget extends Target, EventEmitter {}
 
@@ -29,7 +30,7 @@ export class HackiumTarget extends Target {
     this.log.debug('Constructed new target');
   }
 
-  async page(): Promise<HackiumPage> {
+  page(): Promise<HackiumPage | null> {
     return super.page() as Promise<HackiumPage>;
   }
 

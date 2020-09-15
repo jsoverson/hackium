@@ -17,7 +17,9 @@ import { waterfallMap } from '../util/promises';
 import { PuppeteerLaunchOptions } from '../util/types';
 import { BrowserCloseCallback, HackiumBrowser } from './hackium-browser';
 import { HackiumPage } from './hackium-page';
-import { time } from 'console';
+import repl, { REPLServer } from 'repl';
+import { Readable, Writable } from 'stream';
+import { merge } from '../util/object';
 
 const ENVIRONMENT = ['GOOGLE_API_KEY=no', 'GOOGLE_DEFAULT_CLIENT_ID=no', 'GOOGLE_DEFAULT_CLIENT_SECRET=no'];
 
@@ -45,9 +47,11 @@ export class Hackium extends EventEmitter {
   browser?: HackiumBrowser;
   log = new Logger('hackium');
   version = require(path.join(findRoot(__dirname), 'package.json')).version;
+  repl?: REPLServer;
 
   config: ArgumentsWithDefaults = new ArgumentsWithDefaults();
 
+  private unpauseCallback?: Function;
   private defaultChromiumArgs: string[] = [
     '--disable-infobars',
     '--no-default-browser-check',
@@ -62,18 +66,22 @@ export class Hackium extends EventEmitter {
   constructor(config?: Arguments) {
     super();
     this.log.debug('contructing Hackium instance');
+
     if (config) this.config = Object.assign({}, this.config, config);
     this.log.debug('Using config: %o', this.config);
 
     this.log.debug('running preInit on %o plugins', this.config.plugins.length);
     this.config.plugins.forEach((plugin) => plugin.preInit && plugin.preInit(this, this.config));
 
-    HackiumPage.hijackCreate({
-      interceptorFiles: this.config.interceptor,
-      injectionFiles: this.config.inject,
-      pwd: this.config.pwd,
-      watch: this.config.watch,
-    });
+    HackiumPage.hijackCreate(
+      {
+        interceptorFiles: this.config.interceptor,
+        injectionFiles: this.config.inject,
+        pwd: this.config.pwd,
+        watch: this.config.watch,
+      },
+      this.config.plugins,
+    );
 
     if ('devtools' in this.config) {
       this.launchOptions.devtools = this.config.devtools;
@@ -118,8 +126,8 @@ export class Hackium extends EventEmitter {
     return this.browser;
   }
 
-  async launch(options: LaunchOptions = {}) {
-    let launchOptions = Object.assign(options, this.launchOptions);
+  async launch(options: PuppeteerLaunchOptions = {}) {
+    let launchOptions = merge(this.launchOptions, options);
     this.log.debug('running preLaunch on %o plugins', this.config.plugins.length);
     await waterfallMap(this.config.plugins, (plugin) => plugin.preLaunch && plugin.preLaunch(this, launchOptions));
 
@@ -134,6 +142,64 @@ export class Hackium extends EventEmitter {
     await waterfallMap(this.config.plugins, (plugin) => plugin.postBrowserInit && plugin.postBrowserInit(this, browser, launchOptions));
 
     return (this.browser = browser);
+  }
+
+  startRepl(context: Record<string, any> = {}) {
+    return new Promise((resolve) => {
+      if (this.repl) {
+        this.log.debug('closing old repl');
+        this.repl.close();
+        this.repl.on('exit', () => {
+          this.repl = undefined;
+          resolve(this.startRepl());
+        });
+      } else {
+        this.log.debug('starting repl');
+        this.repl = repl.start({
+          prompt: '> ',
+          output: process.stdout,
+          input: process.stdin,
+        });
+        Object.assign(this.repl.context, { hackium: this, unpause: this.unpause.bind(this) }, context);
+        resolve();
+      }
+    });
+  }
+
+  closeRepl() {
+    if (this.repl) {
+      this.log.debug('closing repl');
+      this.repl.close();
+      this.repl = undefined;
+    }
+  }
+
+  async pause(options: { repl: false | Record<string, any> } = { repl: {} }) {
+    if (this.unpauseCallback) {
+      this.log.warn('pause called but Hackium thinks it is already paused. Maybe you forgot to add an "await"?');
+      this.unpauseCallback();
+      this.unpauseCallback = undefined;
+    }
+    if (options.repl) {
+      this.log.info('starting REPL. Pass { repl: false } to pause() to skip the repl in the future.');
+      await this.startRepl(options.repl);
+    }
+    this.log.debug('pausing');
+    return new Promise((resolve) => {
+      this.unpauseCallback = resolve;
+    });
+  }
+
+  unpause() {
+    if (this.unpauseCallback) {
+      this.log.debug('unpausing');
+      this.unpauseCallback();
+      this.unpauseCallback = undefined;
+    } else {
+      this.log.warn(
+        `unpause called but Hackium doesn't think it's paused. If this is a bug in Hackium, please submit an issue here: https://github.com/jsoverson/hackium.`,
+      );
+    }
   }
 
   async cliBehavior() {

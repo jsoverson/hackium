@@ -3,10 +3,11 @@ import { expect } from 'chai';
 import fs from 'fs';
 import { Hackium } from '../../src';
 import { getRandomDir } from '../../src/util/file';
+import { delay } from '../../src/util/promises';
 
 const fsp = fs.promises;
 
-describe('Browser context', function () {
+describe('Browser', function () {
   this.timeout(6000);
   let userDataDir = '/nonexistant';
   let hackium: Hackium;
@@ -23,19 +24,24 @@ describe('Browser context', function () {
   });
 
   beforeEach(async () => {
-    hackium = new Hackium({ headless: true });
+    hackium = new Hackium({ headless: false });
   });
 
   afterEach(async () => {
     if (hackium) await hackium.close();
   });
 
-  it('Should expose hackium object & version on the page', async () => {
+  it('should update active page as tabs open', async () => {
     const browser = await hackium.launch();
-    const context = await browser.createIncognitoBrowserContext();
-    const page = await context.newPage();
+    const [page] = await browser.pages();
     await page.goto(server.url('index.html'));
-    const version = await page.evaluate('hackium.version');
-    expect(version).to.equal(require('../../package.json').version);
+    expect(page).to.equal(browser.activePage);
+    const page2 = await browser.newPage();
+    // delay because of a race condition where goto resolves before we get
+    // to communicate that the active page updated. It's significant in automated scripts but not
+    // perceptible in manual usage/repl where activePage is most used.
+    await delay(1000);
+    await page2.goto(server.url('two.html'), { waitUntil: 'networkidle2' });
+    expect(page2).to.equal(browser.activePage);
   });
 });

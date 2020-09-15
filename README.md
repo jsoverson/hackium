@@ -4,7 +4,7 @@ Hackium is a CLI tool, a browser, and a platform for analyzing and manipulating 
 
 ## Hackium vs Puppeteer?
 
-[Puppeteer][1] is an automation framework aimed at developers who need to automate and test the web headlessly. Hackium exposes Puppeteer's automation framework to an interactive version of Chromium and extends it with features aimed at web power users.
+[Puppeteer][1] is an automation framework aimed at developers who need to automate and test the web headlessly. Hackium exposes Puppeteer's automation framework to an interactive version of Chromium and extends it with features aimed at web power users. Features that Puppeteer will not adopt for compatibility or maintenance reasons may find a home in Hackium.
 
 Hackium started as Puppeteer scripts and will continue to directly rely on Puppeteer unless both project's focus diverge passed the point of code sharability.
 
@@ -106,6 +106,8 @@ Like [Puppeteer], `hackium.launch()` launches a Chrome instance and returns a `H
 
 Returns a browser instance. Refer to Puppeteer's [Browser] section for further documentation.
 
+Example:
+
 ```js
 const { Hackium } = require('hackium');
 
@@ -120,6 +122,50 @@ async function main() {
 }
 ```
 
+#### `.pause(options)`
+
+Initializes a REPL and returns a promise that resolves only when `hackium.unpause()` (or `unpause()` in the REPL) is called. Use `pause()` with async/await to troubleshoot a script or to inject manual work into an automated process.
+
+Options:
+
+- `repl` : pass `false` to disable the REPL or an object to use as the REPL context.
+
+Example:
+
+```js
+const { Hackium } = require('hackium');
+
+const hackium = new Hackium();
+
+async function main() {
+  const browser = await hackium.launch();
+  const [page] = await browser.pages();
+  await hackium.pause({ repl: { page } });
+}
+```
+
+#### `.startRepl(context)`
+
+Initializes a REPL, adding the passed context to the REPL context. Will close an existing REPL if it is open.
+
+Example:
+
+```js
+const { Hackium } = require('hackium');
+
+const hackium = new Hackium();
+
+async function main() {
+  const browser = await hackium.launch();
+  const [page] = await browser.pages();
+  await hackium.startRepl({ page });
+}
+```
+
+#### `.closeRepl()`
+
+Closes a manually opened REPL.
+
 ### HackiumBrowser
 
 HackiumBrowser extends Puppeteer's [Browser] and manages instrumentation of the browser.
@@ -128,9 +174,32 @@ HackiumBrowser extends Puppeteer's [Browser] and manages instrumentation of the 
 
 Hackium Browser comes pre-configured with [puppeteer-extensionbridge] available via `browser.extension`. See [puppeteer-extensionbridge] for documentation.
 
+#### `.clearSiteData(origin)`
+
+Clears everything associated with the passed origin.
+
+```js
+const { Hackium } = require('hackium');
+
+const hackium = new Hackium();
+
+async function main() {
+  const browser = await hackium.launch();
+  await browser.clearSiteData('google.com');
+}
+```
+
 ### HackiumPage
 
 HackiumPage extends Puppeteer's [Page] and manages instrumentation of each created page.
+
+#### `.connection`
+
+Each page has a Chrome DevTools Protocol session instantiated and accessible via `.connection`. See [Chrome Devtools Protocol](https://chromedevtools.github.io/devtools-protocol/) for documentation.
+
+#### `.forceCacheEnabled(boolean)`
+
+This bypasses Puppeteer's intelligent cache settings and sends a direct request to `Network.setCacheDisabled` with your argument.
 
 #### `.mouse`
 
@@ -243,16 +312,34 @@ Use `hackium init script` to generate a sample script.
 
 ## Plugin API
 
-Plugins are JavaScript objects with properties that tie into the Hackium lifecycle. See [hackium-plugin-preserve-native](https://github.com/jsoverson/hackium-plugin-preserve-native) for an example of a plugin that injects JavaScript into the page to preserve native functions.
+Plugins are plain JavaScript objects with properties named after Hackium lifecycle events. See [hackium-plugin-preserve-native](https://github.com/jsoverson/hackium-plugin-preserve-native) for an example of a plugin that injects JavaScript into the page to preserve native functions.
 
-```
-{
-  preInit?: (hackium: Hackium, options: ArgumentsWithDefaults) => void;
-  postInit?: (hackium: Hackium, finalOptions: ArgumentsWithDefaults) => void;
-  preLaunch?: (hackium: Hackium, launchOptions: PuppeteerLaunchOptions) => void;
-  postLaunch?: (hackium: Hackium, browser: HackiumBrowser, finalLaunchOptions: PuppeteerLaunchOptions) => void;
-  postBrowserInit?: (hackium: Hackium, browser: HackiumBrowser, finalLaunchOptions: PuppeteerLaunchOptions) => void;
-}
+### Lifecycle methods
+
+- `preInit` : called before a Hackium instance is initialized. Receives the `hackium` instance and the passed options.
+- `postInit` : called after a Hackium instance is initialized. Receives the `hackium` instance and the final options.
+- `preLaunch` : called before the browser is launched. Receives the `hackium` instance and the launch options.
+- `postLaunch` : called after the browser is launched. Receives the `hackium` instance, `browser` instance, and final launch options.
+- `postBrowserInit` : called after running browser initializing and instrumentation logic. Receives the `hackium` instance, `browser` instance, and final launch options.
+- `prePageCreate` : called before a `Page` instance is created. Receives a `browser` instance.
+- `postPageCreate` : called after a `Page` instance is created. Receives a `browser` instance and a `page` instance.
+
+### Boilerplate plugin
+
+```js
+let plugin: Plugin = {
+  preInit: function (hackium, options) {},
+  postInit: function (hackium, options) {},
+  preLaunch: function (hackium, launchOptions) {},
+  postLaunch: function (hackium, browser, finalLaunchOptions) {},
+  postBrowserInit: function (hackium, browser, finalLaunchOptions) {},
+  prePageCreate: function (browser) {},
+  postPageCreate: function (browser, page) {},
+};
+
+hackium = new Hackium({
+  plugins: [plugin],
+});
 ```
 
 [1]: https://github.com/puppeteer/puppeteer/blob/v5.2.1/docs/api.md

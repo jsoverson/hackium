@@ -9,6 +9,7 @@ import { start, TestServer } from '@jsoverson/test-server';
 import path from 'path';
 import { getRandomDir } from '../../src/util/file';
 import { delay } from '../../src/util/promises';
+import { CDPSession } from 'puppeteer/lib/cjs/puppeteer/common/Connection';
 
 const fsp = fs.promises;
 
@@ -29,28 +30,47 @@ describe('Page', function () {
   });
 
   beforeEach(async () => {
-    hackium = new Hackium();
+    hackium = new Hackium({ headless: true });
   });
 
   afterEach(async () => {
     if (hackium) await hackium.close();
   });
 
-  it('Should update active page as tabs open', async () => {
+  it('should expose a CDP session', async () => {
     const browser = await hackium.launch();
     const [page] = await browser.pages();
-    await page.goto(server.url('index.html'));
-    expect(page).to.equal(browser.activePage);
-    const page2 = await browser.newPage();
-    // delay because of a race condition where goto resolves before we get
-    // to communicate that the active page updated. It's significant in automated scripts but not
-    // perceptible in manual usage/repl where activePage is most used.
-    await delay(1000);
-    await page2.goto(server.url('two.html'), { waitUntil: 'networkidle2' });
-    expect(page2).to.equal(browser.activePage);
+    expect(page.connection).to.be.instanceOf(CDPSession);
   });
 
-  it('Should expose hackium object & version on the page', async () => {
+  it("should bypass puppeteer's smart caching if forceCacheEnabled(true)", async () => {
+    const cachedUrl = server.url('cached');
+    const browser = await hackium.launch();
+    const [page] = await browser.pages();
+    const go = async () => page.goto(cachedUrl).then((resp) => page.content());
+    const resultA1 = await go();
+    const resultA2 = await go();
+    expect(resultA1).to.equal(resultA2);
+
+    await page.setRequestInterception(true);
+    let i = 0;
+    page.on('request', (interceptedRequest) => ++i && interceptedRequest.continue());
+
+    const resultB1 = await go(); // should be cached, but cache was disabled by setRequestInterception()
+    expect(resultB1).to.not.equal(resultA1);
+    expect(i).to.equal(1);
+
+    await page.forceCacheEnabled(true);
+    const resultC1 = await go(); // need to visit page again to cache response
+    expect(i).to.equal(2);
+    const resultC2 = await go();
+    expect(i).to.equal(3);
+    expect(resultC1).to.equal(resultC2);
+    expect(resultC1).to.equal(resultB1);
+    expect(resultC2).to.equal(resultB1);
+  });
+
+  it('should expose hackium object & version on the page', async () => {
     const browser = await hackium.launch();
     const [page] = await browser.pages();
     await page.goto(server.url('index.html'));
@@ -58,8 +78,9 @@ describe('Page', function () {
     expect(version).to.equal(require('../../package.json').version);
   });
 
-  it('Should always inject new scripts after hackium client', async () => {
+  it('should always inject new scripts after hackium client', async () => {
     hackium = new Hackium({
+      headless: true,
       inject: [path.join(__dirname, '..', '_fixtures', 'injection.js')],
     });
     const browser = await hackium.launch();
@@ -69,7 +90,7 @@ describe('Page', function () {
     expect(bool).to.be.true;
   });
 
-  it('Should allow configurable interception', async () => {
+  it('should allow configurable interception', async () => {
     const browser = await hackium.launch();
     const [page] = await browser.pages();
     let runs = 0;
