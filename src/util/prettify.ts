@@ -1,4 +1,3 @@
-
 const { parseScript } = require('shift-parser');
 import { prettyPrint } from 'shift-printer';
 

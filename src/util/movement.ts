@@ -52,7 +52,7 @@ export class SimulatedMovement {
     const points = [[start.x, start.y]];
     let done = false;
     while (!done) {
-      var remainingDistance = Math.max(start.distanceTo(end), 1);
+      let remainingDistance = Math.max(start.distanceTo(end), 1);
       this.impulse = Math.min(this.impulse, remainingDistance);
 
       let hiccup = Random.rng.oneIn(6);
@@ -68,7 +68,7 @@ export class SimulatedMovement {
       let maxStep = Math.min(remainingDistance, hiccup ? hiccupDistance : remainingDistance);
 
       if (velocity.magnitude() > maxStep) {
-        var randomDist = maxStep / 2 + Random.rng.float(0, maxStep / 2);
+        let randomDist = maxStep / 2 + Random.rng.float(0, maxStep / 2);
         velocity = velocity.unit().multiply(randomDist);
       }
 

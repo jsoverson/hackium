@@ -179,7 +179,7 @@ export class HackiumBrowser extends Browser {
   async setProxy(host: string, port: number) {
     try {
       if (typeof port !== 'number') throw new Error('port is not a number');
-      var config = {
+      let config = {
         mode: 'fixed_servers',
         rules: {
           singleProxy: {
@@ -191,9 +191,8 @@ export class HackiumBrowser extends Browser {
         },
       };
       const msg = { value: config, scope: 'regular' };
-        this.log.debug(`sending request to change proxy`);
-        return this.extension.send(`chrome.proxy.settings.set`, msg);
-
+      this.log.debug(`sending request to change proxy`);
+      return this.extension.send(`chrome.proxy.settings.set`, msg);
     } catch (err) {
       const setProxyError = `HackiumBrowser.setProxy: ${err.message}`;
       this.log.error(setProxyError);

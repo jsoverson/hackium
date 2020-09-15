@@ -68,6 +68,10 @@ export class HackiumMouse extends Mouse {
   }
 
   async click(x: number = this.x, y: number = this.y, options: MouseOptions & { delay?: number } = {}): Promise<void> {
+    if (typeof x !== 'number' || typeof y !== 'number') {
+      this.log.error('Mouse.click: x and y must be numbers');
+      throw new Error('x & y must be numbers');
+    }
     if (!options.delay) options.delay = this.rng.int(this.minDelay, this.maxDelay);
     await this.move(x, y);
     return super.click(x, y, options);

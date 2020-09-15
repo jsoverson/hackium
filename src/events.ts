@@ -1,4 +1,3 @@
-
 export enum HACKIUM_EVENTS {
   BEFORE_LAUNCH = 'beforeLaunch',
   LAUNCH = 'launch',
@@ -12,4 +11,3 @@ export class HackiumClientEvent {
     this.payload = payload;
   }
 }
-

@@ -43,5 +43,4 @@ export class Random {
   oneIn(num: number) {
     return this.float() < 1 / num;
   }
-
 }

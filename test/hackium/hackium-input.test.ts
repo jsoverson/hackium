@@ -1,8 +1,10 @@
 import { start, TestServer } from '@jsoverson/test-server';
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
 import { Hackium } from '../../src';
 import { HackiumBrowser } from '../../src/hackium/hackium-browser';
+import spies from 'chai-spies';
 
+chai.use(spies);
 describe('Input', function () {
   describe('Mouse', function () {
     this.timeout(10000);
@@ -27,6 +29,20 @@ describe('Input', function () {
       expect(page.mouse.y).to.be.not.undefined;
       expect(page.mouse.y).to.be.greaterThan(0);
     });
+
+    it('click() should give a friendly error when passing incorrect types', async () => {
+      hackium = new Hackium({ headless: true });
+      const browser = await hackium.launch();
+      const [page] = await browser.pages();
+      const logSpy = chai.spy();
+      page.mouse.log.error = logSpy;
+      let error: any;
+      await page.mouse.click('100' as any, '100' as any).catch((e) => (error = e));
+      expect(error).to.be.instanceOf(Error);
+      expect(error.message).to.contain('x & y must be numbers');
+      expect(logSpy).to.have.been.called.once;
+    });
+
     it('.moveTo should move to an element & click should click where we are at', async () => {
       hackium = new Hackium({ headless: true });
       const browser = await hackium.launch();

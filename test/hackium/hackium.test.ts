@@ -1,15 +1,10 @@
-import chai, { expect } from 'chai';
-import spies from 'chai-spies';
+import { expect } from 'chai';
 import findRoot from 'find-root';
 import path from 'path';
 import { Hackium } from '../../src';
 import { HackiumBrowser } from '../../src/hackium/hackium-browser';
-import { Plugin } from '../../src/util/types';
 import { HackiumPage } from '../../src/hackium/hackium-page';
-import { string } from 'yargs';
-import Logger from '../../src/util/logger';
-
-chai.use(spies);
+import { Plugin } from '../../src/util/types';
 
 describe('Hackium', function () {
   let hackium: Hackium | null = null;
@@ -19,21 +14,6 @@ describe('Hackium', function () {
   it('Should instantiate with no arguments', async () => {
     hackium = new Hackium();
     expect(hackium).to.be.instanceOf(Hackium);
-  });
-
-  it('Should return an error when port defined as string', async () => {
-
-    hackium = new Hackium();
-    const browser = await hackium.launch();
-    const logSpy = chai.spy();
-    browser.log.error = logSpy;
-    let browserError: any;
-    const callSetProxy = (stringPort: any) => browser.setProxy("127.0.0.1", stringPort)
-    await callSetProxy('9999')
-      .catch((err: Error) => { browserError = err; })
-    expect(browserError).to.be.instanceOf(Error)
-    expect(browserError.message).to.contain('port is not a number');
-    expect(logSpy).to.have.been.called.once.with('HackiumBrowser.setProxy: port is not a number')
   });
 
   it('Should use version from package.json', async () => {

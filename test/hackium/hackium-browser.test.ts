@@ -1,10 +1,12 @@
 import { start, TestServer } from '@jsoverson/test-server';
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
 import fs from 'fs';
 import { Hackium } from '../../src';
 import { getRandomDir } from '../../src/util/file';
 import { delay } from '../../src/util/promises';
+import spies from 'chai-spies';
 
+chai.use(spies);
 const fsp = fs.promises;
 
 describe('Browser', function () {
@@ -43,5 +45,19 @@ describe('Browser', function () {
     await delay(1000);
     await page2.goto(server.url('two.html'), { waitUntil: 'networkidle2' });
     expect(page2).to.equal(browser.activePage);
+  });
+
+  it('Should return an error when port defined as string', async () => {
+    const browser = await hackium.launch();
+    const logSpy = chai.spy();
+    browser.log.error = logSpy;
+    let browserError: any;
+    const callSetProxy = (stringPort: any) => browser.setProxy('127.0.0.1', stringPort);
+    await callSetProxy('9999').catch((err: Error) => {
+      browserError = err;
+    });
+    expect(browserError).to.be.instanceOf(Error);
+    expect(browserError.message).to.contain('port is not a number');
+    expect(logSpy).to.have.been.called.once.with('HackiumBrowser.setProxy: port is not a number');
   });
 });
