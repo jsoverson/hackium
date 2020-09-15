@@ -30,7 +30,7 @@ describe('cli', function () {
 
   beforeEach(async () => {
     dir = await getRandomDir();
-    baseArgs = `--pwd="${__dirname}" --userDataDir=${dir}`;
+    baseArgs = `--pwd="${__dirname}" --headless --userDataDir=${dir}`;
     baseUrlArgs = `--url="${server.url('index.html')}" ${baseArgs}`;
   });
 
@@ -53,8 +53,8 @@ describe('cli', function () {
   });
 
   it('Should allow for configurable timeouts', async () => {
-    // set a timeout too low for Chrome to launch & use the error in the assertion
-    instance = new Hackium(getArgs(`${baseArgs} -t 100`));
+    // set a timeout too low for Chrome to launch & check the error in the assertion
+    instance = new Hackium(getArgs(`${baseArgs} -t 10`));
     const error = await instance.cliBehavior().catch((e: any) => e);
     expect(error.message).to.match(/Timed out/i);
   });
@@ -86,7 +86,7 @@ describe('cli', function () {
   it('Should read local config', async () => {
     instance = new Hackium({
       pwd: __dirname,
-      // headless: true,
+      headless: true,
       url: server.url('anything/'),
     } as Arguments);
     const browser = await instance.cliBehavior();
@@ -97,7 +97,7 @@ describe('cli', function () {
 
   it('Should merge defaults with passed config', async () => {
     instance = new Hackium({
-      headless: false,
+      headless: true,
       userDataDir: dir,
     } as Arguments);
     expect(instance.config.pwd).equal(process.cwd());

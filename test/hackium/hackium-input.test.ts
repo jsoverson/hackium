@@ -19,7 +19,7 @@ describe('Input', function () {
       if (hackium) await hackium.close();
     });
     it('coordinates should be randomized at mouse instantiation', async () => {
-      hackium = new Hackium({ devtools: false });
+      hackium = new Hackium({ headless: true });
       const browser = await hackium.launch();
       const [page] = await browser.pages();
       expect(page.mouse.x).to.be.not.undefined;
@@ -28,7 +28,7 @@ describe('Input', function () {
       expect(page.mouse.y).to.be.greaterThan(0);
     });
     it('.moveTo should move to an element & click should click where we are at', async () => {
-      hackium = new Hackium({ devtools: false });
+      hackium = new Hackium({ headless: true });
       const browser = await hackium.launch();
       const [page] = await browser.pages();
       await page.goto(server.url('form.html'));
@@ -40,7 +40,7 @@ describe('Input', function () {
       expect(numClicks).to.equal(3);
     });
     it('.idle should reset basic idle timer', async () => {
-      hackium = new Hackium({ devtools: false });
+      hackium = new Hackium({ headless: true });
       const browser = await hackium.launch();
       const [page] = await browser.pages();
       await page.goto(server.url('idle.html'));
@@ -67,7 +67,7 @@ describe('Input', function () {
     });
 
     it('.idle should reset basic idle timer', async () => {
-      hackium = new Hackium({ devtools: false });
+      hackium = new Hackium({ headless: true });
       const browser = await hackium.launch();
       const [page] = await browser.pages();
       await page.goto(server.url('idle.html'));

@@ -20,6 +20,8 @@ import { HackiumBrowser } from './hackium-browser';
 import { HackiumBrowserContext } from './hackium-browser-context';
 import { HackiumKeyboard, HackiumMouse } from './hackium-input';
 import { EvaluateFn, SerializableOrJSHandle } from 'puppeteer/lib/cjs/puppeteer/common/EvalTypes';
+import { Plugin } from '../util/types';
+import { HackiumTarget } from './hackium-target';
 
 interface WaitForOptions {
   timeout?: number;
@@ -43,6 +45,8 @@ type InterceptorSignature = (hackium: HackiumBrowser, evt: Interceptor.OnRespons
 
 export class HackiumPage extends Page {
   log = new Logger('hackium:page');
+  connection!: CDPSession;
+
   clientLoaded = false;
   queuedActions: (() => void | Promise<void>)[] = [];
   instrumentationConfig: PageInstrumentationConfig = {
@@ -51,6 +55,7 @@ export class HackiumPage extends Page {
     watch: false,
     pwd: process.env.PWD || '/tmp',
   };
+
   _hmouse: HackiumMouse;
   _hkeyboard: HackiumKeyboard;
   private cachedInterceptors: Interceptor[] = [];
@@ -63,14 +68,22 @@ export class HackiumPage extends Page {
     this._hmouse = new HackiumMouse(client, this._hkeyboard, this);
   }
 
-  static hijackCreate = function (config: PageInstrumentationConfig) {
+  static hijackCreate = function (config: PageInstrumentationConfig, plugins: Plugin[] = []) {
     Page.create = async function (
       client: CDPSession,
-      target: Target,
+      target: HackiumTarget,
       ignoreHTTPSErrors: boolean,
       defaultViewport: Viewport | null,
     ): Promise<HackiumPage> {
+      const tempLogger = new Logger('hackium:page');
+      tempLogger.debug('running prePageCreate on %o plugins', plugins.length);
+      plugins.forEach((plugin) => plugin.prePageCreate && plugin.prePageCreate(target.browser() as HackiumBrowser));
+
       const page = new HackiumPage(client, target, ignoreHTTPSErrors);
+
+      page.log.debug('running postPageCreate on %o plugins', plugins.length);
+      plugins.forEach((plugin) => plugin.postPageCreate && plugin.postPageCreate(target.browser() as HackiumBrowser, page));
+
       page.log.debug('Created page new page for target %o', target._targetId);
       page.instrumentationConfig = config;
       await page.__initialize(config);
@@ -79,7 +92,7 @@ export class HackiumPage extends Page {
   };
 
   private async __initialize(config: PageInstrumentationConfig) {
-    //@ts-ignore I hate private methods.
+    //@ts-ignore #private-fields
     await super._initialize();
     if (this.cachedInterceptors.length === 0) this.loadInterceptors();
     try {
@@ -120,11 +133,6 @@ export class HackiumPage extends Page {
     return super.browserContext() as HackiumBrowserContext;
   }
 
-  // Have to override this due to a Puppeteer@4 type bug. Should be able to remove soon
-  async goto(url: string, options?: WaitForOptions & { referer?: string }): Promise<HTTPResponse> {
-    return super.goto(url, options || {});
-  }
-
   get mouse(): HackiumMouse {
     return this._hmouse;
   }
@@ -133,9 +141,18 @@ export class HackiumPage extends Page {
     return this._hkeyboard;
   }
 
+  async forceCacheEnabled(enabled = true) {
+    //@ts-ignore #private-fields
+    await this._frameManager.networkManager()._client.send('Network.setCacheDisabled', {
+      cacheDisabled: !enabled,
+    });
+  }
+
   private async instrumentSelf(config: PageInstrumentationConfig = this.instrumentationConfig) {
     this.instrumentationConfig = config;
     this.log.debug(`instrumenting page %o with config %o`, this.url(), config);
+
+    this.connection = await this.target().createCDPSession();
 
     await this.exposeFunction(strings.get('clienteventhandler'), (data: any) => {
       const name = data.name;
@@ -229,12 +246,6 @@ export class HackiumPage extends Page {
       files.map((f) => {
         const location = resolve([f], this.instrumentationConfig.pwd);
         this.log.debug(`reading %o (originally %o)`, location, f);
-        // if (this.instrumentationConfig.watch) {
-        //    turns out Puppeteer doesn't expose the Script identifier on evaluateOnNewDoc
-        //    so watching and reloading in the current page may be a PITA.
-        //    I'm leaving this here so you know not to bother implementing watch functionality
-        //    unless you want to reimplement a bunch of Puppeteer stuff.
-        // }
         return read(location).then(renderTemplate);
       }),
     );

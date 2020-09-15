@@ -66,7 +66,7 @@ export class HackiumBrowser extends Browser {
     this.setActivePage(page);
   }
 
-  async pages() {
+  async pages(): Promise<HackiumPage[]> {
     const contextPages = await Promise.all(this.browserContexts().map((context) => context.pages()));
     return contextPages.reduce((acc, x) => acc.concat(x), []);
   }
@@ -166,6 +166,13 @@ export class HackiumBrowser extends Browser {
     return this.connection.send('Browser.setWindowBounds', {
       windowId: window.windowId,
       bounds: { top: 0, left: 0, width, height },
+    });
+  }
+
+  async clearSiteData(origin: string) {
+    await this.connection.send('Storage.clearDataForOrigin', {
+      origin,
+      storageTypes: 'all',
     });
   }
 
