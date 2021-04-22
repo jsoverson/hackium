@@ -43,6 +43,7 @@ describe('Page', function () {
     expect(page.connection).to.be.instanceOf(CDPSession);
   });
 
+  // TODO: fix this test
   it("should bypass puppeteer's smart caching if forceCacheEnabled(true)", async () => {
     const cachedUrl = server.url('cached');
     const browser = await hackium.launch();

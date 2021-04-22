@@ -1,7 +1,7 @@
 import { Hackium } from '..';
 import { Arguments, ArgumentsWithDefaults } from '../arguments';
 import { HackiumBrowser } from '../hackium/hackium-browser';
-import { LaunchOptions, ChromeArgOptions, BrowserOptions } from 'puppeteer/lib/cjs/puppeteer/node/LaunchOptions';
+import { BrowserLaunchArgumentOptions, LaunchOptions, PuppeteerNodeLaunchOptions } from 'puppeteer/lib/cjs/puppeteer/node/LaunchOptions';
 import { HackiumPage } from '../hackium/hackium-page';
 
 export interface Constructor<T> {
@@ -18,4 +18,4 @@ export interface Plugin {
   postPageCreate?: (browser: HackiumBrowser, page: HackiumPage) => any;
 }
 
-export type PuppeteerLaunchOptions = LaunchOptions & ChromeArgOptions & BrowserOptions;
+export type PuppeteerLaunchOptions = LaunchOptions & BrowserLaunchArgumentOptions & PuppeteerNodeLaunchOptions;
