@@ -160,6 +160,8 @@ export class HackiumPage extends Page {
       this.emit(`hackiumclient:${name}`, new HackiumClientEvent(name, data));
     });
 
+    // TODO: fix error: Argument of type '"hackiumclient:onClientLoaded"' is not assignable to parameter of type 'keyof PageEventObject'
+    // @ts-ignore
     this.on('hackiumclient:onClientLoaded', (e: HackiumClientEvent) => {
       this.clientLoaded = true;
       this.log.debug(`client loaded, running %o queued actions`, this.queuedActions.length);
@@ -168,6 +170,8 @@ export class HackiumPage extends Page {
       });
     });
 
+    // TODO: fix error: Argument of type '"hackiumclient:onClientLoaded"' is not assignable to parameter of type 'keyof PageEventObject'
+    // @ts-ignore
     this.on('hackiumclient:pageActivated', (e: HackiumClientEvent) => {
       this.browser().setActivePage(this);
     });

@@ -145,7 +145,7 @@ export class Hackium extends EventEmitter {
   }
 
   startRepl(context: Record<string, any> = {}) {
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       if (this.repl) {
         this.log.debug('closing old repl');
         this.repl.close();

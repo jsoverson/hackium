@@ -6,3 +6,4 @@ extensions/theme/Cached\ Theme.pak
 .repl_history
 test/_fixtures/interceptorTemp.js
 scratch/
+yarn.lock

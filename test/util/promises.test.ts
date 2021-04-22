@@ -29,7 +29,7 @@ describe('Promises', function () {
       });
     }
     function promiseGeneratorIndex(el: any, i: number) {
-      return new Promise((res, rej) => {
+      return new Promise<void>((res, rej) => {
         setTimeout(() => {
           arrayIndex[i] = el;
           res();

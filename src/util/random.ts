@@ -1,8 +1,15 @@
 import seedrandom from 'seedrandom';
 
+interface Prng {
+  (): number;
+  int32(): number;
+  quick(): number;
+  double(): number;
+}
+
 export class Random {
   seed: number;
-  rng: seedrandom.prng;
+  rng: Prng;
 
   static rng = new Random(0);
 

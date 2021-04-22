@@ -121,7 +121,7 @@ export class HackiumBrowser extends Browser {
 
     if (targetInfo.url === 'chrome://newtab/') {
       this.log.debug('New tab opened, waiting for it to navigate to custom newtab');
-      await new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         let done = false;
         const changedHandler = (targetInfo: Protocol.Target.TargetInfo) => {
           this.log.debug('New tab target info changed %o', targetInfo);

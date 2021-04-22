@@ -1,6 +1,6 @@
-import { Puppeteer } from 'puppeteer/lib/cjs/puppeteer/common/Puppeteer';
-import { initializePuppeteer } from 'puppeteer/lib/cjs/puppeteer/initialize';
+import { initializePuppeteerNode } from 'puppeteer/lib/cjs/puppeteer/initialize-node';
+import { PuppeteerNode } from 'puppeteer/lib/cjs/puppeteer/node/Puppeteer';
 
-const puppeteer = initializePuppeteer('puppeteer');
+const puppeteer = initializePuppeteerNode('puppeteer');
 
-export default puppeteer as Puppeteer;
+export default puppeteer as PuppeteerNode;
