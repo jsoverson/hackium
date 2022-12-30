@@ -89,7 +89,7 @@
     "chai": "4.2.0",
     "chai-spies": "^1.0.0",
     "copyfiles": "2.3.0",
-    "mocha": "7.1.1",
+    "mocha": "10.2.0",
     "mock-stdin": "1.0.0",
     "prettier": "2.0.5",
     "rimraf": "3.0.2",
